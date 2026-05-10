@@ -51,30 +51,23 @@ Sensitive values (API key) redacted.
 15. *(after Claude proposed building Phase 1 tools)*
     Yes
 
-16. *(Phase 1 eval kicked off in background)*
-    Let's update the TODO since we reprioritized a bit.
-
-17. We basically started on Phase 1 instead of Phase 0 so we can swap them.
-
-18. Please also move the completed items to the worklog.
-
-19. *(Phase 1 eval completed: 62.5% easy, 39.1% hard)*
+16. *(Phase 1 eval completed: 62.5% easy, 39.1% hard)*
     check the progress of the shell run
 
-20. Let's write a short doc for each run, before we forget.
+17. Let's write a short doc for each run, before we forget.
 
-21. Once we get the results, we should git commit.
+18. Once we get the results, we should git commit.
 
-22. *(Run 2 results in: regression to 48.4% / 28.1%)*
+19. *(Run 2 results in: regression to 48.4% / 28.1%)*
     Let's update the TODO.
 
-23. `  - Fix: strengthen system prompt — "the guide title names the schema; use it directly after reading"`
+20. `  - Fix: strengthen system prompt — "the guide title names the schema; use it directly after reading"`
     This is one idea; we should be clear that it's just an idea and there may be other approaches to consider.
 
-24. We should add context about this error somewhere, either in the run file or in a separate file about the issue.
+21. We should add context about this error somewhere, either in the run file or in a separate file about the issue.
 
-25. Good. Let's prepare to handoff the context. Make sure the existing docs have all the info needed to start fresh on the TODO.md
+22. Good. Let's prepare to handoff the context. Make sure the existing docs have all the info needed to start fresh on the TODO.md
 
-26. Yes *(to committing the handoff docs)*
+23. Yes *(to committing the handoff docs)*
 
-27. We should also save this chat's prompts as an artifact for the assignment, omitting the openrouter API key and any other sensitive info. Probably it's not needed to include your responses, only my prompts.
+24. We should also save this chat's prompts as an artifact for the assignment, omitting the openrouter API key and any other sensitive info. Probably it's not needed to include your responses, only my prompts.
