@@ -345,15 +345,36 @@ class Agent:
     def _get_system_message(self) -> str:
         """Get the system message for the agent."""
         return (
-            "You are an autonomous SQL agent. You must complete tasks independently "
-            "without asking the user for clarification or additional information. "
-            "Use the available tools to gather any information you need. "
-            "If you're uncertain, make your best assumptions and proceed.\n\n"
-            "CRITICAL: You MUST call the 'submit_answer' tool to complete EVERY task. "
-            "NEVER stop without calling submit_answer. Even if you've computed the answer, "
-            "you MUST submit it via submit_answer with a valid SQL query.\n\n"
-            "Do not provide answers as plain text - always use the submit_answer tool "
-            "with a valid SQL query that generates a dataframe with the intended answer."
+            "You are an autonomous SQL agent. Complete every task independently — "
+            "never ask for clarification. Make best assumptions and proceed.\n\n"
+
+            "CRITICAL: You MUST call submit_answer to complete EVERY task. "
+            "Never stop without submitting. Always use the submit_answer tool, "
+            "never output SQL as plain text.\n\n"
+
+            "DATABASE:\n"
+            "The warehouse is a DuckDB file containing many schemas, each with multiple tables.\n"
+            "- ALWAYS use schema-qualified names: schema.table (e.g. financial.account, Airline.flights)\n"
+            "- Schema and table names are CASE-SENSITIVE\n"
+            "- Never reference unqualified table names — queries will fail\n\n"
+
+            "RECOMMENDED WORKFLOW:\n"
+            "1. search_guides — search for business rules using domain terms from the question\n"
+            "2. read_guide — read the full guide for any strong hits to get all rules\n"
+            "3. list_schemas — find relevant schemas\n"
+            "4. list_tables(schema) — find tables in the target schema\n"
+            "5. describe_table(schema, table) — check column names and types\n"
+            "6. run_sql — preview your query to verify results before submitting\n"
+            "7. submit_answer — submit your final SQL query\n\n"
+
+            "GRADER (loose comparison):\n"
+            "- Row count must match exactly\n"
+            "- Column names and order are IGNORED — only values matter\n"
+            "- Extra columns are fine\n"
+            "- Float values compared with ε=1e-4 tolerance\n\n"
+
+            "Business rules in guides (filters, thresholds, exclusions) are critical for "
+            "correctness. Always check guides before writing SQL for any domain question."
         )
 
     def run(self, prompt: str) -> Iterator[AgentEvent]:

@@ -1,0 +1,264 @@
+SQL Agent Evaluation
+Loading tools and preparing agent...
+
+Agent tools: search_guides, read_guide, list_schemas, list_tables, 
+describe_table, search_columns, sample_rows, run_sql, submit_answer
+Concurrency: 16
+Saving traces to: logs/run_20260510_055406
+Logging traces to: logs/run_20260510_055406/evals_easy
+
+Evaluating: evals_easy
+Loaded 64 evaluation cases
+Running with concurrency: 16
+
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+ ev…  ███████████████████████████████████████████████████████████…  31 / 33 /   
+                                                                    64          
+============================================================
+Evaluation Summary
+============================================================
+
+┏━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
+┃ Split      ┃ Passed ┃ Mismatch ┃ Other ┃ Total ┃ Pass Rate ┃
+┡━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
+│ evals_easy │     31 │       19 │    14 │    64 │     48.4% │
+└────────────┴────────┴──────────┴───────┴───────┴───────────┘
+
+Token Usage
+  Input tokens:  961,612
+  Output tokens: 115,414
+  Total tokens:  1,077,026
+Logging traces to: logs/run_20260510_055406/evals_hard
+
+Evaluating: evals_hard
+Loaded 64 evaluation cases
+Running with concurrency: 16
+
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Empty response detected - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+
+[DEBUG] Response looks like failed tool call - injecting continuation prompt
+ ev…  ███████████████████████████████████████████████████████████…  18 / 46 /   
+                                                                    64          
+============================================================
+Evaluation Summary
+============================================================
+
+┏━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
+┃ Split      ┃ Passed ┃ Mismatch ┃ Other ┃ Total ┃ Pass Rate ┃
+┡━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
+│ evals_easy │     31 │       19 │    14 │    64 │     48.4% │
+│ evals_hard │     18 │       32 │    14 │    64 │     28.1% │
+├────────────┼────────┼──────────┼───────┼───────┼───────────┤
+│ Total      │     49 │       51 │    28 │   128 │     38.3% │
+└────────────┴────────┴──────────┴───────┴───────┴───────────┘
+
+Token Usage
+  Input tokens:  2,698,420
+  Output tokens: 282,184
+  Total tokens:  2,980,604

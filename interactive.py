@@ -14,6 +14,8 @@ from rich.prompt import Prompt
 from framework.agent import Agent, Tool
 from framework.llm import OpenRouterConfig
 from framework.stream_printer import StreamPrinter
+from tools.db_tools import DESCRIBE_TABLE, LIST_SCHEMAS, LIST_TABLES, RUN_SQL, SAMPLE_ROWS
+from tools.guide_tools import READ_GUIDE, SEARCH_GUIDES
 from tools.submit_answer import SUBMIT_ANSWER
 
 
@@ -24,8 +26,14 @@ def create_tools() -> dict[str, Tool]:
         Dictionary mapping tool names to Tool instances.
     """
     return {
+        SEARCH_GUIDES.name: SEARCH_GUIDES,
+        READ_GUIDE.name: READ_GUIDE,
+        LIST_SCHEMAS.name: LIST_SCHEMAS,
+        LIST_TABLES.name: LIST_TABLES,
+        DESCRIBE_TABLE.name: DESCRIBE_TABLE,
+        SAMPLE_ROWS.name: SAMPLE_ROWS,
+        RUN_SQL.name: RUN_SQL,
         SUBMIT_ANSWER.name: SUBMIT_ANSWER,
-        # You can add your own tools here to test!
     }
 
 

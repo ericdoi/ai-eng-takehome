@@ -1,0 +1,51 @@
+SQL Agent Evaluation
+Loading tools and preparing agent...
+
+Agent tools: submit_answer
+Concurrency: 16
+Saving traces to: logs/run_20260510_053738
+Logging traces to: logs/run_20260510_053738/evals_easy
+
+Evaluating: evals_easy
+Loaded 64 evaluation cases
+Running with concurrency: 16
+
+ ev…  ███████████████████████████████████████████████████████████…  0 / 64 / 64 
+============================================================
+Evaluation Summary
+============================================================
+
+┏━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
+┃ Split      ┃ Passed ┃ Mismatch ┃ Other ┃ Total ┃ Pass Rate ┃
+┡━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
+│ evals_easy │      0 │       10 │    54 │    64 │      0.0% │
+└────────────┴────────┴──────────┴───────┴───────┴───────────┘
+
+Token Usage
+  Input tokens:  22,321
+  Output tokens: 25,423
+  Total tokens:  47,744
+Logging traces to: logs/run_20260510_053738/evals_hard
+
+Evaluating: evals_hard
+Loaded 64 evaluation cases
+Running with concurrency: 16
+
+ ev…  ███████████████████████████████████████████████████████████…  0 / 64 / 64 
+============================================================
+Evaluation Summary
+============================================================
+
+┏━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
+┃ Split      ┃ Passed ┃ Mismatch ┃ Other ┃ Total ┃ Pass Rate ┃
+┡━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
+│ evals_easy │      0 │       10 │    54 │    64 │      0.0% │
+│ evals_hard │      0 │       24 │    40 │    64 │      0.0% │
+├────────────┼────────┼──────────┼───────┼───────┼───────────┤
+│ Total      │      0 │       34 │    94 │   128 │      0.0% │
+└────────────┴────────┴──────────┴───────┴───────┴───────────┘
+
+Token Usage
+  Input tokens:  44,747
+  Output tokens: 47,218
+  Total tokens:  91,965

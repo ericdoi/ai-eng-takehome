@@ -55,7 +55,7 @@ class OpenRouterConfig:
     model: str = "openai/gpt-oss-120b:nitro"
     api_key: str = ""
     max_tokens: int = 100000
-    temperature: float = 0.6
+    temperature: float = 0.1
     max_iterations: int = 30
     # Provider routing - no restriction by default
     provider: dict[str, Any] = field(default_factory=dict)
@@ -65,9 +65,9 @@ class OpenRouterConfig:
     # If no data is received within this time, the request will timeout
     first_token_timeout: float = 10.0
     # Context compression settings (reduces token usage on long conversations)
-    compress_context: bool = False  # Enable context compression
+    compress_context: bool = True
     compress_keep_recent: int = 3  # Number of recent tool results to keep in full
-    compress_max_chars: int = 150  # Max chars for truncated older results
+    compress_max_chars: int = 400  # Max chars for truncated older results
 
 
 @dataclass
