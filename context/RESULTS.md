@@ -8,16 +8,19 @@
 | 3 | Anti-loop: schema hint in search_guides + STRICT RULES prompt (hard only) | — | 21/64 | — | 32.8% | ~$0.33 | `logs/run_20260510_061531/` |
 | 4 | Anti-loop v2: soft ANTI-LOOP RULES + `world` schema fix (hard only, REGRESSION) | — | 17/64 | — | 26.6% | ~$0.57 | `logs/run_20260510_061954/` |
 | 1′ | Run 1 code reproduced (revert check, both splits) | 42/64 | 17/64 | 65.6% | 26.6% | ~$0.60 | `logs/run_20260510_063816/` |
+| 5 | Phase 2: generated guides + find_schema tool (first run, guides truncated + bare SQL) | — | 21/64 | — | 32.8% | ~$1.70 | `logs/run_20260510_072957/` |
+| 6 | Phase 2 v2: fixed guides (schema-qualified SQL, join paths first, schema name banner) | — | 21/64 | — | 32.8% | ~$1.00 | `logs/run_20260510_075148/` |
 
 ## Hard split failure breakdown
 
-| Type          | Run 0 | Run 1 | Run 2 | Run 3 | Run 4 | Run 1′ |
-|---------------|-------|-------|-------|-------|-------|--------|
-| PASS          |   0   |  25   |  18   |  21   |  17   |  17    |
-| MISMATCH      |  24   |  20   |  26   |  26   |  15   |  24    |
-| AGENT_ERROR   |   0   |  10   |   5   |   7   |  32   |   6    |
-| NO_SUBMISSION |   0   |   7   |  10   |   3   |   0   |  10    |
-| SQL_ERROR     |  40   |   2   |   5   |   7   |   0   |   7    |
+| Type          | Run 0 | Run 1 | Run 2 | Run 3 | Run 4 | Run 1′ | Run 5 | Run 6 |
+|---------------|-------|-------|-------|-------|-------|--------|-------|-------|
+| PASS          |   0   |  25   |  18   |  21   |  17   |  17    |  21   |  21   |
+| MISMATCH      |  24   |  20   |  26   |  26   |  15   |  24    |  32   |  40   |
+| AGENT_ERROR   |   0   |  10   |   5   |   7   |  32   |   6    |  11   |   2   |
+| NO_SUBMISSION |   0   |   7   |  10   |   3   |   0   |  10    |   —   |   0   |
+| SQL_ERROR     |  40   |   2   |   5   |   7   |   0   |   7    |   —   |   1   |
+| Other         |   0   |   0   |   0   |   0   |   0   |   0    |  11   |   0   |
 
 ## Navigation funnel (hard split, from trace analysis)
 
@@ -29,6 +32,8 @@
 | 3   | 60/64 (94%) | 52/64 (81%) | 21/64 (33%)         |  4          |  6          | 33          |
 | 4   | 64/64 (100%)| 60/64 (94%) | 17/64 (27%)         |  0          |  4          | 43          |
 | 1′  | 57/64 (89%) | 51/64 (80%) | 17/64 (27%)         |  7          |  6          | 34          |
+| 5   | 56/64 (88%) | 50/64 (78%) | 21/64 (33%)         |  8          |  6          | 29          |
+| 6   | 60/64 (94%) | 54/64 (84%) | 21/64 (33%)         |  4          |  6          | 33          |
 
 **Key insight:** Run 4 achieved perfect schema identification (100%) and near-perfect table
 identification (94%) — yet logic (pass rate) hit its lowest point (27%). Wrong logic dominates
@@ -37,7 +42,7 @@ Navigation is not the bottleneck. Business-rule application is.
 
 ## Notes
 
-- Runs 3–4 are hard-split only to conserve API budget (~$0.33/run vs ~$0.65/both).
+- Runs 3–5 are hard-split only to conserve API budget (~$1.70/hard-only run, ~$3.30/both).
 - Run 2 lesson: `search_columns` hurt table identification (43 vs 51) by leading agents to
   wrong tables via generic keyword matches.
 - Run 3 lesson: strict anti-loop rules improved schema identification (89%→94%) but pushed
@@ -49,3 +54,13 @@ Navigation is not the bottleneck. Business-rule application is.
   (57/64, 51/64), so variance is entirely in the logic step (LLM inference for SQL generation).
   **Signal threshold:** a hard-split result is only clearly meaningful if it reaches ≥30/64
   (≥47%) — roughly 2 standard deviations above the observed variance band.
+- Run 5 lesson: Phase 2 first run — same pass rate as Run 3 (21/64) but AGENT_ERROR improved
+  (10→11, within variance) and MISMATCH rose (20→32). Root causes: (1) all generated guides
+  were truncated at 4096 tokens, cutting off join paths and business rules; (2) guide SQL used
+  bare table names, potentially misleading the agent; (3) schema name not salient in find_schema
+  response, causing ErgastF1/lahman_2014 re-exploration loops. All three fixed for Run 6.
+- Run 6 lesson: fixes worked for navigation — AGENT_ERROR fell 11→2, schema 88%→94%, tables
+  78%→84%. But pass rate unchanged (21/64). MISMATCH rose to 40 because more cases now reach
+  the logic stage but still fail. Logic is the sole remaining bottleneck. Top failing schemas:
+  financial (7), Credit (6), Airline (6), lahman_2014 (5), Chess (4), employee (4), ErgastF1 (4).
+  Token usage fell 40% (1.7M→1.0M) due to more focused guides. Budget: ~$12.68 remaining.

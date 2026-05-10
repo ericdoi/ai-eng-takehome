@@ -1,143 +1,82 @@
 # Pima Schema Reference Guide
 
 ## Schema Summary
-The Pima schema contains medical and demographic measurements for individuals identified by patient codes, organized across nine normalized tables with a common patient identifier.
-
----
-
-## Table Reference
-
-### Pima.age
-**Meaning:** Patient age in years  
-**Synonyms:** years, patient age, age in years
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Age value | years, age |
-
----
-
-### Pima.bmi
-**Meaning:** Body Mass Index measurement  
-**Synonyms:** body mass index, BMI
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | BMI value | body mass index, BMI |
-
----
-
-### Pima.diastolic
-**Meaning:** Diastolic blood pressure measurement  
-**Synonyms:** diastolic pressure, blood pressure diastolic
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Diastolic pressure in mmHg | diastolic, pressure |
-
----
-
-### Pima.numPreg
-**Meaning:** Number of pregnancies  
-**Synonyms:** pregnancies, pregnancy count, number of pregnancies
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Count of pregnancies | pregnancies, count |
-
----
-
-### Pima.pedigree
-**Meaning:** Diabetes pedigree function score  
-**Synonyms:** pedigree function, diabetes pedigree, family history score
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Pedigree function value | score, pedigree score |
-
----
-
-### Pima.pima
-**Meaning:** Diabetes diagnosis outcome  
-**Synonyms:** diagnosis, outcome, diabetes status, result
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | VARCHAR | Diagnosis result | outcome, status, result |
-
-**Enumeration:** `T` (positive/true), `F` (negative/false)
-
----
-
-### Pima.plasma
-**Meaning:** Plasma glucose concentration  
-**Synonyms:** glucose, plasma glucose, blood glucose
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Plasma glucose in mg/dL | glucose, concentration |
-
----
-
-### Pima.serum
-**Meaning:** Serum insulin measurement  
-**Synonyms:** insulin, serum insulin, insulin level
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Serum insulin in mu U/ml | insulin, level |
-
----
-
-### Pima.tricepts
-**Meaning:** Triceps skin fold thickness measurement  
-**Synonyms:** triceps, skin fold, triceps thickness
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| arg1 | VARCHAR | Patient identifier | patient ID, ID, code |
-| arg2 | DOUBLE | Triceps thickness in mm | thickness, measurement |
-
----
+The Pima schema contains medical and demographic measurements for individuals, organized as separate tables keyed by patient identifier, supporting analysis of health metrics and diabetes indicators.
 
 ## Join Paths
 
-All tables join on patient identifier using the common column `arg1`:
+All patient records are joined via `arg1` (patient identifier). Standard join pattern:
 
 ```sql
-Pima.age a
-JOIN Pima.bmi b ON a.arg1 = b.arg1
-JOIN Pima.diastolic d ON a.arg1 = d.arg1
-JOIN Pima.numPreg np ON a.arg1 = np.arg1
-JOIN Pima.pedigree p ON a.arg1 = p.arg1
-JOIN Pima.pima pi ON a.arg1 = pi.arg1
-JOIN Pima.plasma pl ON a.arg1 = pl.arg1
-JOIN Pima.serum s ON a.arg1 = s.arg1
-JOIN Pima.tricepts t ON a.arg1 = t.arg1
+FROM Pima.pima p
+JOIN Pima.age a ON p.arg1 = a.arg1
+JOIN Pima.bmi b ON p.arg1 = b.arg1
+JOIN Pima.plasma pl ON p.arg1 = pl.arg1
+JOIN Pima.diastolic d ON p.arg1 = d.arg1
+JOIN Pima.serum s ON p.arg1 = s.arg1
+JOIN Pima.tricepts t ON p.arg1 = t.arg1
+JOIN Pima.numPreg np ON p.arg1 = np.arg1
+JOIN Pima.pedigree pd ON p.arg1 = pd.arg1
 ```
-
----
 
 ## Synonym Glossary
 
-| Common Term | Exact Schema Reference |
-|-------------|------------------------|
-| patient age | `Pima.age.arg2` |
+| Term | Schema Reference |
+|------|------------------|
+| patient ID | `arg1` (VARCHAR identifier) |
+| diabetes status | `Pima.pima.arg2` (F/T) |
+| age (years) | `Pima.age.arg2` |
 | BMI | `Pima.bmi.arg2` |
-| diastolic pressure | `Pima.diastolic.arg2` |
+| blood pressure (diastolic) | `Pima.diastolic.arg2` |
 | pregnancies | `Pima.numPreg.arg2` |
-| pedigree score | `Pima.pedigree.arg2` |
-| diabetes positive | `Pima.pima.arg2 = 'T'` |
-| diabetes negative | `Pima.pima.arg2 = 'F'` |
-| glucose | `Pima.plasma.arg2` |
-| insulin | `Pima.serum.arg2` |
-| skin fold thickness | `Pima.tricepts.arg2` |
-| patient ID | `arg1` (any table) |
+| family history score | `Pima.pedigree.arg2` |
+| glucose level | `Pima.plasma.arg2` |
+| insulin level | `Pima.serum.arg2` |
+| triceps skinfold | `Pima.tricepts.arg2` |
+
+## Table Reference
+
+### `Pima.pima`
+Diabetes diagnosis indicator per patient.
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Diabetes status — enumerated values: `T` (positive), `F` (negative)
+
+### `Pima.age`
+Patient age in years.
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Age (DOUBLE)
+
+### `Pima.bmi`
+Body Mass Index.
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: BMI value (DOUBLE); note: 0.0 indicates missing/invalid data
+
+### `Pima.plasma`
+Fasting plasma glucose concentration (mg/dL).
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Glucose level (DOUBLE)
+
+### `Pima.diastolic`
+Diastolic blood pressure (mmHg).
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Diastolic pressure (DOUBLE)
+
+### `Pima.serum`
+Serum insulin level (mu U/ml).
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Insulin level (DOUBLE); note: 0.0 indicates missing/invalid data
+
+### `Pima.tricepts`
+Triceps skinfold thickness (mm).
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Skinfold thickness (DOUBLE); note: 0.0 indicates missing/invalid data
+
+### `Pima.numPreg`
+Number of pregnancies.
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Pregnancy count (DOUBLE)
+
+### `Pima.pedigree`
+Diabetes pedigree function (family history score).
+- **arg1**: Patient identifier (VARCHAR)
+- **arg2**: Pedigree score (DOUBLE)

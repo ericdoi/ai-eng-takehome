@@ -1,298 +1,302 @@
-# SQL Reference Guide: geneea Schema
+# Geneea Schema Reference Guide
 
 ## Schema Summary
-The geneea schema contains Czech parliamentary (Poslanecká sněmovna) legislative data including sessions, voting records, deputies, organizational structures, and committee memberships.
+This schema contains Czech parliamentary data: deputies (poslanec), voting records (hl_hlasovani), parliamentary bodies (organy), sessions (schuze), and agenda items (bod_schuze), spanning multiple legislative periods.
+
+---
+
+## Join Paths
+
+**Deputy to person details:**
+```sql
+FROM geneea.poslanec p
+JOIN geneea.osoby o ON p.id_osoba = o.id_osoba
+```
+
+**Voting record to individual deputy votes:**
+```sql
+FROM geneea.hl_hlasovani hh
+JOIN geneea.hl_poslanec hp ON hh.id_hlasovani = hp.id_hlasovani
+JOIN geneea.poslanec p ON hp.id_poslanec = p.id_poslanec
+```
+
+**Deputy to organizational roles:**
+```sql
+FROM geneea.poslanec p
+JOIN geneea.zarazeni z ON p.id_osoba = z.id_osoba
+JOIN geneea.funkce f ON z.id_of = f.id_organ AND z.cl_funkce = f.id_funkce
+JOIN geneea.organy org ON f.id_organ = org.id_organ
+```
+
+**Session to agenda items:**
+```sql
+FROM geneea.schuze s
+JOIN geneea.bod_schuze bs ON s.id_schuze = bs.id_schuze
+```
+
+**Voting to session and agenda:**
+```sql
+FROM geneea.hl_hlasovani hh
+JOIN geneea.schuze s ON hh.schuze = s.schuze AND hh.id_organ = s.id_organ
+JOIN geneea.bod_schuze bs ON hh.bod = bs.bod AND s.id_schuze = bs.id_schuze
+```
+
+**Deputy absence records:**
+```sql
+FROM geneea.poslanec p
+JOIN geneea.omluvy om ON p.id_poslanec = om.id_poslanec
+```
 
 ---
 
 ## Table Reference
 
-### geneea.bod_schuze
-**Meaning**: Agenda items (body) of parliamentary sessions; individual topics/motions discussed in sessions.
-**Synonyms**: agenda item, motion, topic, session point
+### `geneea.bod_schuze`
+Agenda items (body) within parliamentary sessions.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_bod` | BIGINT | Unique agenda item identifier | agenda item ID |
-| `id_schuze` | BIGINT | Foreign key to session | session ID |
-| `id_tisk` | VARCHAR | Document/print number | document ID, print ID |
-| `id_typ` | VARCHAR | Agenda item type code | type ID |
-| `bod` | BIGINT | Sequence number within session | item number, order |
-| `uplny_naz` | VARCHAR | Full name/title of agenda item | full name, title, description |
-| `uplny_kon` | VARCHAR | Full conclusion/outcome text | conclusion, outcome |
-| `poznamka` | VARCHAR | Note/remark | note, comment |
-| `id_bod_stav` | BIGINT | Foreign key to agenda item status | status ID |
-| `pozvanka` | VARCHAR | Invitation flag (0=no, 1=yes) | invitation |
-| `rj` | VARCHAR | Regulatory jurisdiction code (0, 1, 2) | jurisdiction |
-| `pozn2` | VARCHAR | Secondary note | note 2, remark 2 |
-| `druh_bodu` | VARCHAR | Type of agenda point (0, 1, 2, 3) | point type |
-| `id_sd` | VARCHAR | Subdepartment ID | subdept ID |
-| `zkratka` | VARCHAR | Abbreviation | abbrev |
+| Column | Semantics |
+|--------|-----------|
+| `id_bod` | Unique agenda item identifier |
+| `id_schuze` | Session reference |
+| `id_tisk` | Document/bill reference (often NULL) |
+| `id_typ` | Item type code: `0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 14, 18, 43, 54` |
+| `bod` | Sequence number within session |
+| `uplny_naz` | Full title of agenda item |
+| `uplny_kon` | Full conclusion/outcome text |
+| `id_bod_stav` | Status reference (→ `geneea.bod_stav.id_bod_stav`) |
+| `pozvanka` | Invitation flag: `0` (no), `1` (yes) |
+| `rj` | Regulatory jurisdiction: `0, 1, 2` |
+| `druh_bodu` | Item type category: `0, 1, 2, 3` |
 
----
+### `geneea.bod_stav`
+Agenda item status codes.
 
-### geneea.bod_stav
-**Meaning**: Status/state codes for agenda items.
-**Synonyms**: agenda status, item status, point status
+| Column | Values |
+|--------|--------|
+| `id_bod_stav` | `0` (projednán), `1` (neprojednán), `2` (přerušen), `3` (neprojednatelný), `4` (právě projednávaný) |
+| `popis` | Status description |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_bod_stav` | BIGINT | Status identifier | status ID |
-| `popis` | VARCHAR | Status description | status, description |
+### `geneea.hl_hlasovani`
+Voting records (roll calls) in parliamentary sessions.
 
-**Enumerated values** (exact):
-- `projednán` (discussed/processed)
-- `neprojednán` (not discussed)
-- `přerušen` (interrupted)
-- `neprojednatelný` (not discussable)
-- `právě projednávaný` (currently being discussed)
-- `jiz projednan` (already discussed)
-- `odročen` (postponed)
+| Column | Semantics |
+|--------|-----------|
+| `id_hlasovani` | Unique voting record identifier |
+| `id_organ` | Voting body (usually 171 for Chamber of Deputies) |
+| `schuze` | Session number |
+| `cislo` | Vote sequence number within session |
+| `bod` | Agenda item number |
+| `datum` | Vote date |
+| `cas` | Vote time |
+| `pro` | Count voting FOR |
+| `proti` | Count voting AGAINST |
+| `zdrzel` | Count ABSTAINING |
+| `nehlasoval` | Count NOT VOTING |
+| `prihlaseno` | Total present |
+| `kvorum` | Quorum required |
+| `druh_hlasovani` | Vote type: `N` (standard) |
+| `vysledek` | Result: `A` (approved), `R` (rejected) |
+| `nazev_dlouhy` | Full vote description |
+| `nazev_kratky` | Short vote description |
 
----
+### `geneea.hl_poslanec`
+Individual deputy votes within a voting record.
 
-### geneea.funkce
-**Meaning**: Specific function/role assignments within organizations (clubs, committees).
-**Synonyms**: role, position, function assignment
+| Column | Semantics |
+|--------|-----------|
+| `id_poslanec` | Deputy identifier (→ `geneea.poslanec.id_poslanec`) |
+| `id_hlasovani` | Voting record reference |
+| `vysledek` | Vote cast: `A` (for), `B` (against), `K` (abstain), `W` (absent), `@` (other) |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_funkce` | BIGINT | Unique function identifier | function ID, role ID |
-| `id_organ` | BIGINT | Foreign key to organization | organization ID, organ ID |
-| `id_typ_funkce` | BIGINT | Foreign key to function type | function type ID |
-| `nazev_funkce_cz` | VARCHAR | Czech name of function | function name, role name |
-| `priorita` | BIGINT | Priority/rank order | priority, rank |
+### `geneea.hl_zposlanec`
+Excluded/substitute deputies in voting records.
 
----
+| Column | Semantics |
+|--------|-----------|
+| `id_hlasovani` | Voting record reference |
+| `id_osoba` | Person identifier (→ `geneea.osoby.id_osoba`) |
+| `mode` | Exclusion mode: `0` (substitute), `1` (excluded) |
 
-### geneea.hl_check
-**Meaning**: Validation/check records for voting sessions; tracks voting round metadata.
-**Synonyms**: voting check, vote validation, voting metadata
+### `geneea.hl_check`
+Voting record validation/linking metadata.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_hlasovani` | BIGINT | Foreign key to voting session | voting ID, vote ID |
-| `turn` | BIGINT | Round/turn number | round, turn number |
-| `mode` | BIGINT | Mode/type code | mode, type |
-| `id_h2` | VARCHAR | Related voting ID 2 | related vote 2 |
-| `id_h3` | VARCHAR | Related voting ID 3 | related vote 3 |
+| Column | Semantics |
+|--------|-----------|
+| `id_hlasovani` | Voting record reference |
+| `turn` | Turn/round number |
+| `mode` | Check mode |
+| `id_h2`, `id_h3` | Related voting record IDs (often NULL) |
 
----
+### `geneea.hl_vazby`
+Voting record relationships/dependencies.
 
-### geneea.hl_hlasovani
-**Meaning**: Voting sessions/records; individual votes held in parliament.
-**Synonyms**: vote, voting session, ballot, roll call
+| Column | Semantics |
+|--------|-----------|
+| `id_hlasovani` | Voting record reference |
+| `turn` | Turn number |
+| `typ` | Relationship type |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_hlasovani` | BIGINT | Unique voting session identifier | vote ID, voting ID |
-| `id_organ` | BIGINT | Foreign key to organization | organization ID, organ ID |
-| `schuze` | BIGINT | Session number | session number |
-| `cislo` | BIGINT | Vote number within session | vote number |
-| `bod` | BIGINT | Agenda item number | agenda item, point |
-| `datum` | DATE | Date of vote | date, voting date |
-| `cas` | TIME | Time of vote | time, voting time |
-| `pro` | BIGINT | Count of votes in favor | votes for, yes votes |
-| `proti` | BIGINT | Count of votes against | votes against, no votes |
-| `zdrzel` | BIGINT | Count of abstentions | abstain, abstentions |
-| `nehlasoval` | BIGINT | Count of non-voters | did not vote, absent |
-| `prihlaseno` | BIGINT | Total registered/present | registered, present |
-| `kvorum` | BIGINT | Quorum requirement | quorum |
-| `druh_hlasovani` | VARCHAR | Type of voting | voting type |
-| `vysledek` | VARCHAR | Result (A=approved, R=rejected) | result, outcome |
-| `nazev_dlouhy` | VARCHAR | Long name/description of vote | long name, description |
-| `nazev_kratky` | VARCHAR | Short name/abbreviation | short name, abbrev |
+### `geneea.zmatecne`
+Flagged/disputed voting records.
 
-**Enumerated values** (exact):
-- `vysledek`: `A` (approved/accepted), `R` (rejected/refused)
-- `druh_hlasovani`: `N`
+| Column | Semantics |
+|--------|-----------|
+| `id_hlasovani` | Voting record marked as disputed |
 
----
+### `geneea.schuze`
+Parliamentary sessions.
 
-### geneea.hl_poslanec
-**Meaning**: Individual deputy voting records; how each deputy voted on each vote.
-**Synonyms**: deputy vote, individual vote, member vote
+| Column | Semantics |
+|--------|-----------|
+| `id_schuze` | Unique session identifier |
+| `id_organ` | Governing body (usually 166 for Chamber of Deputies) |
+| `schuze` | Session sequence number |
+| `od_schuze` | Session start date/time |
+| `do_schuze` | Session end date/time |
+| `aktualizace` | Last update timestamp |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_poslanec` | BIGINT | Foreign key to deputy | deputy ID, member ID |
-| `id_hlasovani` | BIGINT | Foreign key to voting session | vote ID, voting ID |
-| `vysledek` | VARCHAR | Individual vote result | vote result, result |
+### `geneea.schuze_stav`
+Session status and special events.
 
-**Enumerated values** (exact):
-- `A` (approved/yes)
-- `B` (against/no)
-- `K` (abstain)
-- `W` (did not vote/absent)
-- `@` (special code, unclear meaning)
+| Column | Semantics |
+|--------|-----------|
+| `id_schuze` | Session reference |
+| `stav` | Status code |
+| `typ` | Event type: `1`, `2` |
+| `text_st` | Status text (e.g., "vyslovena důvěra vládě ČR", "přerušeno", "žádost o svolání schůze byla stažena") |
+| `tm_line` | Timeline note |
 
----
+### `geneea.poslanec`
+Deputy records linking persons to parliamentary periods.
 
-### geneea.hl_vazby
-**Meaning**: Relationships/dependencies between voting sessions.
-**Synonyms**: vote relationship, voting link, vote dependency
+| Column | Semantics |
+|--------|-----------|
+| `id_poslanec` | Unique deputy identifier |
+| `id_osoba` | Person reference (→ `geneea.osoby.id_osoba`) |
+| `id_kraj` | District/region code |
+| `id_kandidatka` | Candidate list reference |
+| `id_obdobi` | Legislative period identifier |
+| `web`, `ulice`, `obec`, `psc`, `email`, `telefon`, `fax`, `psp_telefon`, `facebook` | Contact details (mostly `\` for missing) |
+| `foto` | Photo flag |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_hlasovani` | BIGINT | Foreign key to voting session | vote ID, voting ID |
-| `turn` | BIGINT | Turn/round number | turn, round |
-| `typ` | BIGINT | Relationship type code | type, relationship type |
+### `geneea.osoby`
+Person master data.
 
----
+| Column | Semantics |
+|--------|-----------|
+| `id_osoba` | Unique person identifier |
+| `pred` | Title/prefix (e.g., "Ing.", "Dr.") |
+| `jmeno` | First name |
+| `prijmeni` | Surname |
+| `za` | Suffix/particle |
+| `narozeni` | Birth date |
+| `pohlavi` | Gender: `M` (male), `Z` or `Ž` (female) |
+| `zmena` | Name change date |
+| `umrti` | Death date |
 
-### geneea.hl_zposlanec
-**Meaning**: Excluded/absent deputies for voting sessions; records deputies not participating in a vote.
-**Synonyms**: absent deputy, excluded deputy, non-voting deputy
+### `geneea.zarazeni`
+Deputy assignments to organizations and roles.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_hlasovani` | BIGINT | Foreign key to voting session | vote ID, voting ID |
-| `id_osoba` | BIGINT | Foreign key to person | person ID |
-| `mode` | BIGINT | Absence mode/reason code | mode, reason |
+| Column | Semantics |
+|--------|-----------|
+| `id_osoba` | Person reference |
+| `id_of` | Organization reference (→ `geneea.organy.id_organ`) |
+| `cl_funkce` | Function/role code within organization |
+| `od_o` | Organization assignment start date |
+| `do_o` | Organization assignment end date |
+| `od_f` | Function assignment start date |
+| `do_f` | Function assignment end date |
 
----
+### `geneea.funkce`
+Defined roles within organizations.
 
-### geneea.omluvy
-**Meaning**: Excuses/apologies; records of deputy absences with reasons.
-**Synonyms**: absence, excuse, apology, leave
+| Column | Semantics |
+|--------|-----------|
+| `id_funkce` | Unique role identifier |
+| `id_organ` | Organization reference |
+| `id_typ_funkce` | Role type reference (→ `geneea.typ_funkce.id_typ_funkce`) |
+| `nazev_funkce_cz` | Role name in Czech |
+| `priorita` | Display priority (lower = higher priority) |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_organ` | BIGINT | Foreign key to organization | organization ID, organ ID |
-| `id_poslanec` | BIGINT | Foreign key to deputy | deputy ID, member ID |
-| `den` | VARCHAR | Date of absence (DD.MM.YYYY format) | date, day |
-| `od` | VARCHAR | Start time | from time, start |
-| `do` | VARCHAR | End time | to time, end |
+### `geneea.typ_funkce`
+Role type definitions.
 
----
+| Column | Semantics |
+|--------|-----------|
+| `id_typ_funkce` | Unique role type identifier |
+| `id_typ_org` | Organization type scope |
+| `typ_funkce_cz` | Role type name (Czech) |
+| `typ_funkce_en` | Role type name (English): "Chairman", "Vice-chairman", "Member", "President", "Secretary", "Verifier", etc. |
+| `priorita` | Display priority |
+| `typ_funkce_obecny` | Generic role category |
 
-### geneea.organy
-**Meaning**: Organizations/bodies (parliamentary clubs, committees, commissions, etc.).
-**Synonyms**: organization, body, organ, committee, club, commission
+### `geneea.organy`
+Parliamentary and political organizations (clubs, committees, delegations).
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_organ` | BIGINT | Unique organization identifier | organization ID, organ ID |
-| `organ_id_organ` | BIGINT | Parent organization ID (hierarchical) | parent organ ID |
-| `id_typ_organu` | BIGINT | Foreign key to organization type | type ID, org type ID |
-| `zkratka` | VARCHAR | Abbreviation/acronym | abbrev, acronym |
-| `nazev_organu_cz` | VARCHAR | Czech name of organization | name, organization name |
-| `nazev_organu_en` | VARCHAR | English name of organization | English name |
-| `od_organ` | VARCHAR | Start date (YYYY-MM-DD format) | from date, start date |
-| `do_organ` | VARCHAR | End date (YYYY-MM-DD format) | to date, end date |
-| `priorita` | VARCHAR | Priority/rank | priority, rank |
-| `cl_organ_base` | BIGINT | Base member count | base members, member count |
+| Column | Semantics |
+|--------|-----------|
+| `id_organ` | Unique organization identifier |
+| `organ_id_organ` | Parent organization reference |
+| `id_typ_organu` | Organization type (→ `geneea.typ_organu.id_typ_org`) |
+| `zkratka` | Abbreviation (e.g., "ČSSD", "ČMSS") |
+| `nazev_organu_cz` | Organization name (Czech) |
+| `nazev_organu_en` | Organization name (English) |
+| `od_organ` | Organization start date |
+| `do_organ` | Organization end date |
+| `cl_organ_base` | Base member count |
 
----
+### `geneea.typ_organu`
+Organization type definitions.
 
-### geneea.osoby
-**Meaning**: Persons/individuals; biographical data for all people in the system.
-**Synonyms**: person, individual, deputy, member, person record
+| Column | Semantics |
+|--------|-----------|
+| `id_typ_org` | Unique organization type identifier |
+| `nazev_typ_org_cz` | Type name (Czech): "Klub", "Komise", "Výbor", "Podvýbor", "Vláda", etc. |
+| `nazev_typ_org_en` | Type name (English): "Political Group", "Commission", "Committee", "Subcommittee", "Government", etc. |
+| `typ_org_obecny` | Generic category: `0, 1, 2, 3, 7` |
+| `priorita` | Display priority |
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_osoba` | BIGINT | Unique person identifier | person ID |
-| `pred` | VARCHAR | Title/prefix (e.g., "Ing.", "Dr.") | title, prefix |
-| `jmeno` | VARCHAR | First name | first name, given name |
-| `prijmeni` | VARCHAR | Last name/surname | last name, surname, family name |
-| `za` | VARCHAR | "Za" field (unclear purpose, typically NULL) | za |
-| `narozeni` | VARCHAR | Birth date (DD.MM.YYYY format) | birth date, DOB |
-| `pohlavi` | VARCHAR | Gender (M=male, Z/Ž=female) | gender, sex |
-| `zmena` | VARCHAR | Change/modification date | change date, modification |
-| `umrti` | VARCHAR | Death date | death date, died |
+### `geneea.omluvy`
+Deputy absence/excuse records.
 
-**Enumerated values** (exact):
-- `pohlavi`: `M` (male), `Z` (female), `Ž` (female)
+| Column | Semantics |
+|--------|-----------|
+| `id_organ` | Organization reference |
+| `id_poslanec` | Deputy reference |
+| `den` | Absence date (format: DD.MM.YYYY) |
+| `od` | Absence start time |
+| `do` | Absence end time |
 
----
+### `geneea.pkgps`
+Deputy geographic coordinates and address.
 
-### geneea.pkgps
-**Meaning**: GPS coordinates and addresses for deputies.
-**Synonyms**: deputy address, GPS location, coordinates
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_poslanec` | BIGINT | Foreign key to deputy | deputy ID, member ID |
-| `adresa` | VARCHAR | Full address | address |
-| `sirka` | DOUBLE | Latitude coordinate | latitude |
-| `delka` | DOUBLE | Longitude coordinate | longitude |
-
----
-
-### geneea.poslanec
-**Meaning**: Deputies/members of parliament; contact and biographical information.
-**Synonyms**: deputy, member, MP, parliament member
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_poslanec` | BIGINT | Unique deputy identifier | deputy ID, member ID |
-| `id_osoba` | BIGINT | Foreign key to person | person ID |
-| `id_kraj` | BIGINT | District/region ID | district ID, region ID |
-| `id_kandidatka` | BIGINT | Candidate list ID | candidate ID, list ID |
-| `id_obdobi` | BIGINT | Period/term ID | period ID, term ID |
-| `web` | VARCHAR | Website URL | website, web |
-| `ulice` | VARCHAR | Street address | street, address |
-| `obec` | VARCHAR | Municipality/city | city, municipality |
-| `psc` | VARCHAR | Postal code | postal code, zip |
-| `email` | VARCHAR | Email address | email |
-| `telefon` | VARCHAR | Phone number | phone, telephone |
-| `fax` | VARCHAR | Fax number | fax |
-| `psp_telefon` | VARCHAR | Parliament office phone | office phone, PSP phone |
-| `facebook` | VARCHAR | Facebook profile | facebook |
-| `foto` | BIGINT | Photo ID/flag | photo, photo ID |
+| Column | Semantics |
+|--------|-----------|
+| `id_poslanec` | Deputy reference |
+| `adresa` | Full address string |
+| `sirka` | Latitude (WGS84) |
+| `delka` | Longitude (WGS84) |
 
 ---
 
-### geneea.schuze
-**Meaning**: Parliamentary sessions; scheduled meetings of parliament.
-**Synonyms**: session, meeting, sitting, parliament session
+## Synonym Glossary
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_schuze` | BIGINT | Unique session identifier | session ID |
-| `id_organ` | BIGINT | Foreign key to organization | organization ID, organ ID |
-| `schuze` | BIGINT | Session number | session number |
-| `od_schuze` | VARCHAR | Session start (YYYY-MM-DD HH format) | start date, from date |
-| `do_schuze` | VARCHAR | Session end (YYYY-MM-DD HH format) | end date, to date |
-| `aktualizace` | VARCHAR | Last update timestamp | update, last updated |
-
----
-
-### geneea.schuze_stav
-**Meaning**: Status/state records for sessions; tracks session state changes and special events.
-**Synonyms**: session status, session state, session event
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_schuze` | BIGINT | Foreign key to session | session ID |
-| `stav` | BIGINT | State code | state, status |
-| `typ` | VARCHAR | Type code (1 or 2) | type |
-| `text_dt` | VARCHAR | Date/time text | date text, time text |
-| `text_st` | VARCHAR | Status text description | status text, description |
-| `tm_line` | VARCHAR | Timeline/summary line | timeline, summary |
-
-**Enumerated values** (exact) for `text_st`:
-- `nedůvěra vládě nebyla vyslovena` (no-confidence not passed)
-- `návrh na vyslovení nedůvěry vládě ČR` (no-confidence proposal)
-- `návrh na vyslovení nedůvěry vládě ČR nebyl schválen` (no-confidence not approved)
-- `návrh prezidentu republiky na rozpuštění PS` (dissolution proposal)
-- `projednávání návrhů ve stavu legislativní nouze` (emergency legislation)
-- `přerušeno` (interrupted)
-- `přerušeno do středy 25. listopadu do 9 hodin` (interrupted until specific date/time)
-- `volba veřejného ochránce práv` (ombudsman election)
-- `vyslovena důvěra vládě ČR` (confidence in government passed)
-- `žádost o svolání schůze byla stažena` (session request withdrawn)
-- `žádost vlády o vyslovení důvěry` (government confidence request)
-- `žádost vlády ČR o vyslovení důvěry` (government confidence request)
-- `žádost vlády ČR o vyslovení důvěry - vyslovena` (government confidence passed)
-
----
-
-### geneea.typ_funkce
-**Meaning**: Function/role types; definitions of possible roles in organizations.
-**Synonyms**: role type, function type, position type
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_typ_funkce` | BIGINT | Unique function type identifier | function type ID |
-| `i
+| Term | Schema Reference |
+|------|------------------|
+| Deputy / MP / Representative | `geneea.poslanec` |
+| Person / Individual | `geneea.osoby` |
+| Vote / Roll call / Voting record | `geneea.hl_hlasovani` |
+| Individual vote / Vote cast | `geneea.hl_poslanec.vysledek` |
+| Session / Meeting | `geneea.schuze` |
+| Agenda item / Agenda point / Body | `geneea.bod_schuze` |
+| Organization / Club / Committee / Body | `geneea.organy` |
+| Role / Function / Position | `geneea.funkce` |
+| Assignment / Membership | `geneea.zarazeni` |
+| Absence / Excuse / Apology | `geneea.omluvy` |
+| Approved / Passed | `geneea.hl_hlasovani.vysledek = 'A'` |
+| Rejected / Failed | `geneea.hl_hlasovani.vysledek = 'R'` |
+| For / Voted yes | `geneea.hl_poslanec.vysledek = 'A'` |
+| Against / Voted no | `geneea.hl_poslanec.vysledek = 'B'` |
+| Abstain / Abstained | `geneea.hl_poslanec.vysledek = 'K'` |
+| Absent / Did not vote | `geneea.hl_poslanec.vysledek = 'W'` |
+| Disputed / Flagged vote | `geneea.zmatecne.id_hlasovani` |

@@ -1,171 +1,161 @@
-# SQL Reference Guide: imdb_MovieLens Schema
+# IMDB MovieLens Schema Reference Guide
 
 ## 1. Schema Summary
 
-The `imdb_MovieLens` schema contains integrated IMDB and MovieLens data: movies with metadata (year, language, country, runtime), actors and directors with quality metrics, cast/crew assignments, user ratings, and user demographics.
+This schema integrates IMDb movie metadata (films, actors, directors, genres) with MovieLens user ratings to enable entertainment analytics across cast, crew, film characteristics, and audience sentiment.
 
 ---
 
-## 2. Table Reference
+## 2. Join Paths
 
-### Table: `imdb_MovieLens.actors`
-**Meaning:** Actor records with demographic and quality information.
-**Synonyms:** cast members, performers, talent
+**Movies to actors:**
+```sql
+FROM imdb_MovieLens.movies m
+JOIN imdb_MovieLens.movies2actors ma ON m.movieid = ma.movieid
+JOIN imdb_MovieLens.actors a ON ma.actorid = a.actorid
+```
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `actorid` | BIGINT | Unique actor identifier | actor_id, performer_id |
-| `a_gender` | VARCHAR | Actor gender | gender, sex |
-| `a_quality` | BIGINT | Quality/rating metric for actor | quality_score, talent_rating |
+**Movies to directors:**
+```sql
+FROM imdb_MovieLens.movies m
+JOIN imdb_MovieLens.movies2directors md ON m.movieid = md.movieid
+JOIN imdb_MovieLens.directors d ON md.directorid = d.directorid
+```
 
-**Enumerated values:** `a_gender` = `'F'`, `'M'`
+**User ratings to movies:**
+```sql
+FROM imdb_MovieLens.u2base ub
+JOIN imdb_MovieLens.movies m ON ub.movieid = m.movieid
+JOIN imdb_MovieLens.users u ON ub.userid = u.userid
+```
 
----
-
-### Table: `imdb_MovieLens.directors`
-**Meaning:** Director records with quality and revenue metrics.
-**Synonyms:** filmmakers, helmer records
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `directorid` | BIGINT | Unique director identifier | director_id |
-| `d_quality` | BIGINT | Quality/rating metric for director | quality_score, directorial_rating |
-| `avg_revenue` | BIGINT | Average revenue metric | revenue_score, box_office_metric |
-
----
-
-### Table: `imdb_MovieLens.movies`
-**Meaning:** Movie records with release metadata and technical specifications.
-**Synonyms:** films, titles, productions
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `movieid` | BIGINT | Unique movie identifier | movie_id, title_id |
-| `year` | BIGINT | Release year | release_year, production_year |
-| `isEnglish` | VARCHAR | Language flag (English or not) | language_flag, english_language |
-| `country` | VARCHAR | Production country | origin_country, production_country |
-| `runningtime` | BIGINT | Duration in minutes | duration, length, runtime_minutes |
-
-**Enumerated values:** `isEnglish` = `'T'`, `'F'` | `country` = `'USA'`, `'UK'`, `'France'`, `'other'`
+**Full cast + crew for a movie:**
+```sql
+FROM imdb_MovieLens.movies m
+LEFT JOIN imdb_MovieLens.movies2actors ma ON m.movieid = ma.movieid
+LEFT JOIN imdb_MovieLens.actors a ON ma.actorid = a.actorid
+LEFT JOIN imdb_MovieLens.movies2directors md ON m.movieid = md.movieid
+LEFT JOIN imdb_MovieLens.directors d ON md.directorid = d.directorid
+```
 
 ---
 
-### Table: `imdb_MovieLens.movies2actors`
-**Meaning:** Junction table mapping actors to movies with cast position.
-**Synonyms:** cast assignments, actor-movie relationships
+## 3. Business Rules as SQL
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `movieid` | BIGINT | Movie identifier (FK to movies) | movie_id |
-| `actorid` | BIGINT | Actor identifier (FK to actors) | actor_id |
-| `cast_num` | BIGINT | Cast position/billing order | cast_position, billing_order |
-
----
-
-### Table: `imdb_MovieLens.movies2directors`
-**Meaning:** Junction table mapping directors to movies with genre classification.
-**Synonyms:** director assignments, director-movie relationships
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `movieid` | BIGINT | Movie identifier (FK to movies) | movie_id |
-| `directorid` | BIGINT | Director identifier (FK to directors) | director_id |
-| `genre` | VARCHAR | Film genre | film_genre, category |
-
-**Enumerated values:** `genre` = `'Action'`, `'Adventure'`, `'Animation'`, `'Comedy'`, `'Crime'`, `'Documentary'`, `'Drama'`, `'Horror'`, `'Other'`
+| Rule | SQL Condition |
+|------|---------------|
+| Negative sentiment | `WHERE CAST(ub.rating AS INT) < 3` |
+| Max rating (5-star) | `WHERE ub.rating = '5'` |
+| Super-rater adjustment | Apply `0.9x` factor when `COUNT(CASE WHEN ub.rating = '5' THEN 1 END) / COUNT(*) > 0.5` per user |
+| Sufficient rating signal | `WHERE (SELECT COUNT(*) FROM imdb_MovieLens.u2base WHERE movieid = m.movieid) >= 10` |
+| Classic cinema | `WHERE m.year < 1970` |
+| Exclude documentaries | `WHERE md.genre != 'Documentary'` |
+| Exclude shorts | Flagged separately; no explicit column—use `m.runningtime` heuristic if needed |
+| Actor career analysis | `HAVING COUNT(DISTINCT ma.movieid) >= 3` |
+| One-time directors | `WHERE (SELECT COUNT(DISTINCT movieid) FROM imdb_MovieLens.movies2directors WHERE directorid = d.directorid) = 1` |
+| Meaningful actor-director collaboration | `HAVING COUNT(DISTINCT m.movieid) >= 2` (grouped by actorid, directorid) |
+| Super users | `WHERE (SELECT COUNT(*) FROM imdb_MovieLens.u2base WHERE userid = u.userid) > 1000` |
+| Exclude low-engagement users | `WHERE (SELECT COUNT(*) FROM imdb_MovieLens.u2base WHERE userid = u.userid) >= 10` |
+| Early adopter rating | Requires external release date; use `m.year` as proxy |
 
 ---
 
-### Table: `imdb_MovieLens.u2base`
-**Meaning:** User ratings of movies (user-movie-rating relationships).
-**Synonyms:** ratings, user reviews, user-movie interactions
+## 4. Synonym Glossary
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `userid` | BIGINT | User identifier (FK to users) | user_id |
-| `movieid` | BIGINT | Movie identifier (FK to movies) | movie_id |
-| `rating` | VARCHAR | User's numeric rating (1-5 scale) | user_rating, score |
-
-**Enumerated values:** `rating` = `'1'`, `'2'`, `'3'`, `'4'`, `'5'`
-
----
-
-### Table: `imdb_MovieLens.users`
-**Meaning:** User demographic and profile information.
-**Synonyms:** user profiles, audience members, raters
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `userid` | BIGINT | Unique user identifier | user_id |
-| `age` | VARCHAR | Age bracket/category | age_group, age_bracket |
-| `u_gender` | VARCHAR | User gender | gender, sex |
-| `occupation` | VARCHAR | Occupation code/category | job_code, profession_code |
-
-**Enumerated values:** `age` = `'1'`, `'18'`, `'25'`, `'35'`, `'45'`, `'50'`, `'56'` | `u_gender` = `'F'`, `'M'` | `occupation` = `'1'`, `'2'`, `'3'`, `'4'`, `'5'`
+| Term | Schema Reference |
+|------|------------------|
+| actor quality score | `imdb_MovieLens.actors.a_quality` |
+| director quality score | `imdb_MovieLens.directors.d_quality` |
+| director revenue metric | `imdb_MovieLens.directors.avg_revenue` |
+| cast position | `imdb_MovieLens.movies2actors.cast_num` |
+| film genre | `imdb_MovieLens.movies2directors.genre` |
+| user age bracket | `imdb_MovieLens.users.age` |
+| user job category | `imdb_MovieLens.users.occupation` |
+| film language | `imdb_MovieLens.movies.isEnglish` (T/F) |
+| film origin | `imdb_MovieLens.movies.country` |
+| film duration | `imdb_MovieLens.movies.runningtime` |
+| user sentiment score | `imdb_MovieLens.u2base.rating` |
+| actor gender | `imdb_MovieLens.actors.a_gender` |
+| user gender | `imdb_MovieLens.users.u_gender` |
 
 ---
 
-## 3. Join Paths
+## 5. Table Reference
 
-| Relationship | SQL JOIN Condition |
-|--------------|-------------------|
-| Movies to Actors | `INNER JOIN imdb_MovieLens.movies2actors m2a ON imdb_MovieLens.movies.movieid = m2a.movieid INNER JOIN imdb_MovieLens.actors a ON m2a.actorid = a.actorid` |
-| Movies to Directors | `INNER JOIN imdb_MovieLens.movies2directors m2d ON imdb_MovieLens.movies.movieid = m2d.movieid INNER JOIN imdb_MovieLens.directors d ON m2d.directorid = d.directorid` |
-| Movies to Ratings | `INNER JOIN imdb_MovieLens.u2base ub ON imdb_MovieLens.movies.movieid = ub.movieid` |
-| Ratings to Users | `INNER JOIN imdb_MovieLens.users u ON imdb_MovieLens.u2base.userid = u.userid` |
-| Movies to Ratings to Users | `INNER JOIN imdb_MovieLens.u2base ub ON imdb_MovieLens.movies.movieid = ub.movieid INNER JOIN imdb_MovieLens.users u ON ub.userid = u.userid` |
+### `imdb_MovieLens.actors`
+**Meaning:** Actor profiles with demographic and quality metrics.
 
----
-
-## 4. Business Rules as SQL
-
-| Rule | SQL Implementation |
-|------|-------------------|
-| Negative sentiment (low ratings) | `WHERE CAST(ub.rating AS NUMERIC) < 3.0` |
-| Maximum rating (5-star) | `WHERE ub.rating = '5'` |
-| Super-rater adjustment (>50% 5-star ratings) | `HAVING CAST(SUM(CASE WHEN ub.rating = '5' THEN 1 ELSE 0 END) AS NUMERIC) / COUNT(*) > 0.5` |
-| Sufficient rating signal (≥10 ratings) | `HAVING COUNT(ub.movieid) >= 10` |
-| Insufficient rating signal (<10 ratings) | `HAVING COUNT(ub.movieid) < 10` |
-| Classic cinema (pre-1970) | `WHERE imdb_MovieLens.movies.year < 1970` |
-| Documentary genre | `WHERE imdb_MovieLens.movies2directors.genre = 'Documentary'` |
-| Actor career analysis threshold (≥3 credits) | `HAVING COUNT(m2a.movieid) >= 3` |
-| One-time director (exactly 1 film) | `HAVING COUNT(m2d.movieid) = 1` |
-| Meaningful actor-director collaboration (≥2 films) | `HAVING COUNT(DISTINCT m2d.movieid) >= 2` |
-| Super user (>1000 ratings) | `HAVING COUNT(ub.movieid) > 1000` |
-| Insufficient user history (<10 ratings) | `HAVING COUNT(ub.movieid) < 10` |
-| Horror genre (distinct) | `WHERE imdb_MovieLens.movies2directors.genre = 'Horror'` |
-| Comedy genre (distinct) | `WHERE imdb_MovieLens.movies2directors.genre = 'Comedy'` |
-| Drama genre (overrepresented) | `WHERE imdb_MovieLens.movies2directors.genre = 'Drama'` |
+| Column | Notes |
+|--------|-------|
+| `actorid` | Primary key |
+| `a_gender` | Enum: `F`, `M` |
+| `a_quality` | Quality score (0–4 range observed); higher = better |
 
 ---
 
-## 5. Synonym Glossary
+### `imdb_MovieLens.directors`
+**Meaning:** Director profiles with quality and revenue metrics.
 
-| Common Term | Exact Schema Reference |
-|-------------|------------------------|
-| actor | `imdb_MovieLens.actors.actorid` |
-| director | `imdb_MovieLens.directors.directorid` |
-| movie / film / title | `imdb_MovieLens.movies.movieid` |
-| cast member | `imdb_MovieLens.movies2actors` + `imdb_MovieLens.actors` |
-| crew / filmmaker | `imdb_MovieLens.movies2directors` + `imdb_MovieLens.directors` |
-| user / rater / audience member | `imdb_MovieLens.users.userid` |
-| rating / score / review | `imdb_MovieLens.u2base.rating` |
-| gender | `imdb_MovieLens.actors.a_gender`, `imdb_MovieLens.users.u_gender` |
-| quality / talent / skill | `imdb_MovieLens.actors.a_quality`, `imdb_MovieLens.directors.d_quality` |
-| revenue / box office | `imdb_MovieLens.directors.avg_revenue` |
-| release year | `imdb_MovieLens.movies.year` |
-| language | `imdb_MovieLens.movies.isEnglish` |
-| origin / production country | `imdb_MovieLens.movies.country` |
-| duration / length | `imdb_MovieLens.movies.runningtime` |
-| genre / category | `imdb_MovieLens.movies2directors.genre` |
-| age group / age bracket | `imdb_MovieLens.users.age` |
-| job / profession | `imdb_MovieLens.users.occupation` |
-| cast position / billing order | `imdb_MovieLens.movies2actors.cast_num` |
-| negative sentiment | `CAST(imdb_MovieLens.u2base.rating AS NUMERIC) < 3.0` |
-| high rating / perfect score | `imdb_MovieLens.u2base.rating = '5'` |
-| classic / old film | `imdb_MovieLens.movies.year < 1970` |
-| super user | `COUNT(imdb_MovieLens.u2base.movieid) > 1000` |
-| active rater | `COUNT(imdb_MovieLens.u2base.movieid) >= 10` |
-| prolific actor | `COUNT(imdb_MovieLens.movies2actors.movieid) >= 3` |
-| one-time director | `COUNT(imdb_MovieLens.movies2directors.movieid) = 1` |
-| collaboration | `COUNT(DISTINCT imdb_MovieLens.movies2directors.movieid) >= 2` |
+| Column | Notes |
+|--------|-------|
+| `directorid` | Primary key |
+| `d_quality` | Quality score (0–4 range observed); higher = better |
+| `avg_revenue` | Revenue tier (0–4 range observed) |
+
+---
+
+### `imdb_MovieLens.movies`
+**Meaning:** Film metadata including release year, language, origin, and runtime.
+
+| Column | Notes |
+|--------|-------|
+| `movieid` | Primary key |
+| `year` | Release year; values < 1970 = classic cinema |
+| `isEnglish` | Enum: `T` (English), `F` (non-English) |
+| `country` | Enum: `USA`, `UK`, `France`, `other` |
+| `runningtime` | Duration in minutes; 0 may indicate missing data |
+
+---
+
+### `imdb_MovieLens.movies2actors`
+**Meaning:** Junction table linking movies to cast members with billing order.
+
+| Column | Notes |
+|--------|-------|
+| `movieid` | Foreign key to `imdb_MovieLens.movies` |
+| `actorid` | Foreign key to `imdb_MovieLens.actors` |
+| `cast_num` | Billing position (0 = lead); lower = higher billing |
+
+---
+
+### `imdb_MovieLens.movies2directors`
+**Meaning:** Junction table linking movies to directors with genre classification.
+
+| Column | Notes |
+|--------|-------|
+| `movieid` | Foreign key to `imdb_MovieLens.movies` |
+| `directorid` | Foreign key to `imdb_MovieLens.directors` |
+| `genre` | Enum: `Action`, `Adventure`, `Animation`, `Comedy`, `Crime`, `Documentary`, `Drama`, `Horror`, `Other`; one genre per row (movies may have multiple rows) |
+
+---
+
+### `imdb_MovieLens.u2base`
+**Meaning:** User ratings of movies; core fact table for sentiment analysis.
+
+| Column | Notes |
+|--------|-------|
+| `userid` | Foreign key to `imdb_MovieLens.users` |
+| `movieid` | Foreign key to `imdb_MovieLens.movies` |
+| `rating` | Enum: `1`, `2`, `3`, `4`, `5` (stored as VARCHAR); < 3 = negative sentiment |
+
+---
+
+### `imdb_MovieLens.users`
+**Meaning:** User profiles with demographics and engagement metadata.
+
+| Column | Notes |
+|--------|-------|
+| `userid` | Primary key |
+| `age` | Enum: `1`, `18`, `25`, `35`, `45`, `50`, `56` (age bracket or code) |
+| `u_gender` | Enum: `F`, `M` |
+| `occupation` | Enum: `1`, `2`, `3`, `4`, `5` (occupation category code) |

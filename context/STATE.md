@@ -40,7 +40,7 @@ uv run python scripts/analyze_run.py logs/run_<timestamp>/ --split hard --csv co
 The analyzer now shows a three-stage navigation funnel (right schema / right tables / right
 logic) and per-case tool sequences. Check RESULTS.md for the funnel data across all runs.
 
-API budget: ~$18 remaining (~$0.33/hard-only run, ~$0.65/both). Check balance:
+API budget: **$13.68 remaining** as of 2026-05-10 (~$1.05/guide regeneration, ~$1.70/hard-only eval run, ~$3.30/both-splits run). Check balance:
 ```bash
 curl -s https://openrouter.ai/api/v1/auth/key \
   -H "Authorization: Bearer $(grep OPENROUTER_API_KEY .env | cut -d= -f2)" \

@@ -1,308 +1,490 @@
 # Hockey Schema Reference Guide
 
 ## Schema Summary
+This schema contains comprehensive historical ice hockey statistics spanning multiple leagues (NHL, WHA, NHA, PCHA, WCHL), including player scoring, goaltending, coaching records, team performance, playoff results, and Hall of Fame inductions from 1909 to present.
 
-The Hockey schema contains comprehensive historical statistics for professional hockey players, coaches, teams, and awards across multiple leagues (NHL, WHA, NHA, PCHA, WCHL) spanning over a century of play.
+---
+
+## Join Paths
+
+**Player career stats (regular season + playoffs):**
+```sql
+FROM Hockey.Master m
+JOIN Hockey.Scoring s ON m.playerID = s.playerID
+LEFT JOIN Hockey.Goalies g ON m.playerID = g.playerID AND s.year = g.year
+```
+
+**Player awards and Hall of Fame:**
+```sql
+FROM Hockey.Master m
+LEFT JOIN Hockey.AwardsPlayers ap ON m.playerID = ap.playerID
+LEFT JOIN Hockey.HOF h ON m.hofID = h.hofID
+```
+
+**Coach career history:**
+```sql
+FROM Hockey.Master m
+JOIN Hockey.Coaches c ON m.coachID = c.coachID
+```
+
+**Team season performance:**
+```sql
+FROM Hockey.Teams t
+LEFT JOIN Hockey.TeamsPost tp ON t.year = tp.year AND t.tmID = tp.tmID AND t.lgID = tp.lgID
+LEFT JOIN Hockey.TeamSplits ts ON t.year = ts.year AND t.tmID = ts.tmID AND t.lgID = ts.lgID
+```
+
+**Playoff series results:**
+```sql
+FROM Hockey.SeriesPost sp
+JOIN Hockey.Teams t_winner ON sp.year = t_winner.year AND sp.tmIDWinner = t_winner.tmID AND sp.lgIDWinner = t_winner.lgID
+JOIN Hockey.Teams t_loser ON sp.year = t_loser.year AND sp.tmIDLoser = t_loser.tmID AND sp.lgIDLoser = t_loser.lgID
+```
+
+**Goalie shutout records:**
+```sql
+FROM Hockey.Goalies g
+LEFT JOIN Hockey.CombinedShutouts cs ON g.year = cs.year AND g.playerID IN (cs.IDgoalie1, cs.IDgoalie2)
+```
+
+---
+
+## Business Rules as SQL
+
+**Exclude unreliable plus/minus data:**
+```sql
+WHERE s.year >= 1968 OR s.`+/-` IS NULL
+```
+
+**Separate playoff from regular season (never combine):**
+```sql
+-- Regular season: use columns G, A, Pts, PIM, etc.
+-- Playoff: use columns PostG, PostA, PostPts, PostPIM, etc. (report separately)
+```
+
+**Exclude shootout goals from official totals:**
+```sql
+-- Do NOT include Hockey.ScoringShootout.G in career goal counts
+-- Use only Hockey.Scoring.G for official statistics
+```
+
+**Identify backup goalies (exclude from starter rankings):**
+```sql
+WHERE CAST(g.GP AS UNSIGNED) < 20
+```
+
+**Calculate true save percentage (exclude empty-net goals):**
+```sql
+WHERE CAST(g.ENG AS UNSIGNED) = 0
+-- True SV% = (SA - GA) / (SA - ENG)
+```
+
+**Exclude combined shutouts from individual totals:**
+```sql
+WHERE g.playerID NOT IN (
+  SELECT IDgoalie1 FROM Hockey.CombinedShutouts WHERE IDgoalie1 IS NOT NULL
+  UNION
+  SELECT IDgoalie2 FROM Hockey.CombinedShutouts WHERE IDgoalie2 IS NOT NULL
+)
+```
+
+**Exclude WHA statistics from NHL career totals:**
+```sql
+WHERE s.lgID != 'WHA'
+```
+
+**Flag teams with scheduling anomalies:**
+```sql
+WHERE CAST(t.G AS UNSIGNED) < 41 AND t.lgID = 'NHL'
+```
+
+**Exclude shortened-season award winners:**
+```sql
+-- Filter out awards from years where league-wide GP < 60
+-- Requires cross-reference with Hockey.Scoring to determine season length
+```
+
+---
+
+## Synonym Glossary
+
+| Term | Schema Reference |
+|------|------------------|
+| career goals | `SUM(Hockey.Scoring.G)` where `lgID != 'WHA'` |
+| career assists | `SUM(Hockey.Scoring.A)` where `lgID != 'WHA'` |
+| career points | `SUM(Hockey.Scoring.Pts)` where `lgID != 'WHA'` |
+| playoff goals | `SUM(Hockey.Scoring.PostG)` (report separately) |
+| playoff points | `SUM(Hockey.Scoring.PostPts)` (report separately) |
+| shutouts (individual) | `SUM(Hockey.Goalies.SHO)` excluding `Hockey.CombinedShutouts` |
+| wins (goalie) | `SUM(Hockey.Goalies.W)` |
+| goals against average | `SUM(Hockey.Goalies.GA) / (SUM(Hockey.Goalies.Min) / 60)` |
+| save percentage | `(SUM(SA) - SUM(GA)) / SUM(SA)` where `ENG = 0` |
+| plus/minus | `Hockey.Scoring.+/-` (valid only year ≥ 1968) |
+| power-play goals | `SUM(Hockey.Scoring.PPG)` |
+| short-handed goals | `SUM(Hockey.Scoring.SHG)` |
+| game-winning goals | `SUM(Hockey.Scoring.GWG)` |
+| penalty minutes | `SUM(Hockey.Scoring.PIM)` |
+| Hall of Fame | `Hockey.HOF.year`, `Hockey.HOF.category` |
+| award winner | `Hockey.AwardsPlayers.award`, `Hockey.AwardsCoaches.award` |
+| coach wins | `SUM(Hockey.Coaches.w)` |
+| team goals for | `Hockey.Teams.GF` |
+| team goals against | `Hockey.Teams.GA` |
+| playoff appearance | `Hockey.Teams.playoff` (non-null value) |
 
 ---
 
 ## Table Reference
 
-### Hockey.Master
-**Meaning**: Player and coach biographical registry; the primary identity table for all individuals in the database.
-**Synonyms**: Player registry, Coach registry, Personnel master file
+### `Hockey.Master`
+**Meaning:** Player and coach biographical registry.  
+**Synonyms:** player master, coach master, personnel registry.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| playerID | VARCHAR | Unique identifier for player | player_key, player_code |
-| coachID | VARCHAR | Unique identifier for coach | coach_key, coach_code |
-| hofID | VARCHAR | Unique identifier for Hall of Fame entry | hof_key |
-| firstName | VARCHAR | Player/coach first name | given_name |
-| lastName | VARCHAR | Player/coach last name | family_name |
-| nameNote | VARCHAR | Alternate names or birth names | aka, also_known_as |
-| nameGiven | VARCHAR | Full given name | formal_first_name |
-| nameNick | VARCHAR | Nickname | informal_name |
-| height | VARCHAR | Height in inches | ht |
-| weight | VARCHAR | Weight in pounds | wt |
-| shootCatch | VARCHAR | Shooting/catching hand: B (both), L (left), R (right) | handedness, shot_hand |
-| legendsID | VARCHAR | External reference ID | legends_reference |
-| ihdbID | VARCHAR | External reference ID | ihdb_reference |
-| hrefID | VARCHAR | External reference ID | href_reference |
-| firstNHL | VARCHAR | Year of first NHL season | nhl_debut |
-| lastNHL | VARCHAR | Year of last NHL season | nhl_final |
-| firstWHA | VARCHAR | Year of first WHA season | wha_debut |
-| lastWHA | VARCHAR | Year of last WHA season | wha_final |
-| pos | VARCHAR | Position: C, D, F, G, L, R, W, or combinations (C/D, D/L, etc.) | position |
-| birthYear | VARCHAR | Birth year | birth_yr |
-| birthMon | VARCHAR | Birth month (1-12) | birth_month |
-| birthDay | VARCHAR | Birth day of month | birth_date |
-| birthCountry | VARCHAR | Country of birth | birth_nation |
-| birthState | VARCHAR | State/province of birth | birth_province |
-| birthCity | VARCHAR | City of birth | birth_place |
-| deathYear | VARCHAR | Death year (NULL if living) | death_yr |
-| deathMon | VARCHAR | Death month (1-12) | death_month |
-| deathDay | VARCHAR | Death day of month | death_date |
-| deathCountry | VARCHAR | Country of death | death_nation |
-| deathState | VARCHAR | State/province of death | death_province |
-| deathCity | VARCHAR | City of death | death_place |
+| Column | Notes |
+|--------|-------|
+| `playerID` | Unique player identifier; links to `Scoring`, `Goalies`, `AwardsPlayers` |
+| `coachID` | Unique coach identifier; links to `Coaches`, `AwardsCoaches` |
+| `hofID` | Hall of Fame identifier; links to `HOF` |
+| `pos` | Position: `C`, `D`, `F`, `G`, `L`, `R`, `W`, or combinations (e.g., `C/D`, `R/L`) |
+| `shootCatch` | Handedness: `L` (left), `R` (right), `B` (both) |
+| `birthYear`, `birthMon`, `birthDay` | Birth date components; may be partial |
+| `birthCountry`, `birthState`, `birthCity` | Birth location |
+| `deathYear`, `deathMon`, `deathDay` | Death date components; NULL if living |
+| `firstNHL`, `lastNHL` | First and last NHL season years |
+| `firstWHA`, `lastWHA` | First and last WHA season years (1972–1978 range) |
+| `height`, `weight` | Physical attributes (height in inches, weight in pounds) |
 
 ---
 
-### Hockey.Scoring
-**Meaning**: Regular season scoring statistics for individual players by year and team.
-**Synonyms**: Player statistics, Regular season stats, Scoring records
+### `Hockey.Scoring`
+**Meaning:** Regular season player scoring statistics.  
+**Synonyms:** player stats, regular season stats, scoring records.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| playerID | VARCHAR | Player identifier (FK to Master) | player_key |
-| year | BIGINT | Season year | season |
-| stint | BIGINT | Stint number within season (1, 2, 3 if traded) | stint_num |
-| tmID | VARCHAR | Team identifier | team_code |
-| lgID | VARCHAR | League: NHL, WHA, NHA, PCHA, WCHL | league |
-| pos | VARCHAR | Position played | position |
-| GP | BIGINT | Games played | games |
-| G | BIGINT | Goals scored | goals |
-| A | BIGINT | Assists | assists |
-| Pts | BIGINT | Points (G + A) | points |
-| PIM | BIGINT | Penalties in minutes | penalties |
-| +/- | VARCHAR | Plus/minus rating | plus_minus |
-| PPG | VARCHAR | Power play goals | pp_goals |
-| PPA | VARCHAR | Power play assists | pp_assists |
-| SHG | VARCHAR | Short-handed goals | sh_goals |
-| SHA | VARCHAR | Short-handed assists | sh_assists |
-| GWG | VARCHAR | Game-winning goals | gw_goals |
-| GTG | VARCHAR | Golden Tie goals | gt_goals |
-| SOG | VARCHAR | Shots on goal | shots |
-| PostGP | VARCHAR | Playoff games played | playoff_games |
-| PostG | VARCHAR | Playoff goals | playoff_goals |
-| PostA | VARCHAR | Playoff assists | playoff_assists |
-| PostPts | VARCHAR | Playoff points | playoff_points |
-| PostPIM | VARCHAR | Playoff penalties | playoff_penalties |
-| Post+/- | VARCHAR | Playoff plus/minus | playoff_plus_minus |
-| PostPPG | VARCHAR | Playoff power play goals | playoff_pp_goals |
-| PostPPA | VARCHAR | Playoff power play assists | playoff_pp_assists |
-| PostSHG | VARCHAR | Playoff short-handed goals | playoff_sh_goals |
-| PostSHA | VARCHAR | Playoff short-handed assists | playoff_sh_assists |
-| PostGWG | VARCHAR | Playoff game-winning goals | playoff_gw_goals |
-| PostSOG | VARCHAR | Playoff shots on goal | playoff_shots |
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `stint` | Stint number within season (player may change teams mid-season) |
+| `tmID` | Team identifier; links to `Teams` |
+| `lgID` | League: `NHL`, `WHA`, `NHA`, `PCHA`, `WCHL`. **Exclude `WHA` from NHL career totals.** |
+| `pos` | Position played |
+| `GP` | Games played |
+| `G` | Goals (excludes shootout goals) |
+| `A` | Assists |
+| `Pts` | Points (G + A) |
+| `PIM` | Penalties in minutes |
+| `+/-` | Plus/minus; **unreliable before 1968** |
+| `PPG`, `PPA` | Power-play goals and assists |
+| `SHG`, `SHA` | Short-handed goals and assists |
+| `GWG` | Game-winning goals |
+| `GTG` | Golden-time goals (overtime winners) |
+| `SOG` | Shots on goal |
+| `PostGP`, `PostG`, `PostA`, `PostPts`, `PostPIM`, `Post+/-`, `PostPPG`, `PostPPA`, `PostSHG`, `PostSHA`, `PostGWG`, `PostSOG` | **Playoff equivalents; report separately from regular season** |
 
 ---
 
-### Hockey.Goalies
-**Meaning**: Regular season goaltending statistics for individual goalies by year and team.
-**Synonyms**: Goalie stats, Goaltender records, Netminder statistics
+### `Hockey.Goalies`
+**Meaning:** Regular season goaltender statistics.  
+**Synonyms:** goalie stats, goaltending records.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| playerID | VARCHAR | Goalie identifier (FK to Master) | goalie_key |
-| year | BIGINT | Season year | season |
-| stint | BIGINT | Stint number within season | stint_num |
-| tmID | VARCHAR | Team identifier | team_code |
-| lgID | VARCHAR | League: NHL, WHA, NHA, PCHA, WCHL | league |
-| GP | VARCHAR | Games played | games |
-| Min | VARCHAR | Minutes played | minutes |
-| W | VARCHAR | Wins | wins |
-| L | VARCHAR | Losses | losses |
-| T/OL | VARCHAR | Ties/Overtime losses | ties_ot |
-| ENG | VARCHAR | Empty net goals against | empty_net_goals |
-| SHO | VARCHAR | Shutouts | shutouts |
-| GA | VARCHAR | Goals against | goals_against |
-| SA | VARCHAR | Shots against | shots_against |
-| PostGP | VARCHAR | Playoff games played | playoff_games |
-| PostMin | VARCHAR | Playoff minutes | playoff_minutes |
-| PostW | VARCHAR | Playoff wins | playoff_wins |
-| PostL | VARCHAR | Playoff losses | playoff_losses |
-| PostT | VARCHAR | Playoff ties | playoff_ties |
-| PostENG | VARCHAR | Playoff empty net goals | playoff_empty_net |
-| PostSHO | VARCHAR | Playoff shutouts | playoff_shutouts |
-| PostGA | VARCHAR | Playoff goals against | playoff_goals_against |
-| PostSA | VARCHAR | Playoff shots against | playoff_shots_against |
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `stint` | Stint number within season |
+| `tmID` | Team identifier |
+| `lgID` | League |
+| `GP` | Games played; **exclude from starter rankings if < 20** |
+| `Min` | Minutes played |
+| `W`, `L`, `T/OL` | Wins, losses, ties/overtime losses |
+| `ENG` | Empty-net goals allowed; **exclude from save percentage calculation** |
+| `SHO` | Shutouts; **exclude if goalie appears in `CombinedShutouts`** |
+| `GA` | Goals against |
+| `SA` | Shots against |
+| `PostGP`, `PostMin`, `PostW`, `PostL`, `PostT`, `PostENG`, `PostSHO`, `PostGA`, `PostSA` | **Playoff equivalents; report separately** |
 
 ---
 
-### Hockey.Coaches
-**Meaning**: Regular season coaching records by year and team.
-**Synonyms**: Coach records, Coaching statistics, Manager statistics
+### `Hockey.CombinedShutouts`
+**Meaning:** Shutouts achieved by two goalies in same game.  
+**Synonyms:** shared shutouts, combined shutout records.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| coachID | VARCHAR | Coach identifier (FK to Master) | coach_key |
-| year | BIGINT | Season year | season |
-| tmID | VARCHAR | Team identifier | team_code |
-| lgID | VARCHAR | League: NHA, NHL, PCHA, WCHL, WHA | league |
-| stint | BIGINT | Stint number within season | stint_num |
-| notes | VARCHAR | Special notes (co-coach, interim) | note |
-| g | BIGINT | Games coached | games |
-| w | BIGINT | Wins | wins |
-| l | BIGINT | Losses | losses |
-| t | BIGINT | Ties | ties |
-| postg | VARCHAR | Playoff games coached | playoff_games |
-| postw | VARCHAR | Playoff wins | playoff_wins |
-| postl | VARCHAR | Playoff losses | playoff_losses |
-| postt | VARCHAR | Playoff ties | playoff_ties |
+| Column | Notes |
+|--------|-------|
+| `year`, `month`, `date` | Game date |
+| `tmID`, `oppID` | Team and opponent identifiers |
+| `R/P` | `R` (regular season), `P` (playoff) |
+| `IDgoalie1`, `IDgoalie2` | Goalie identifiers; **neither should receive individual shutout credit** |
 
 ---
 
-### Hockey.Teams
-**Meaning**: Regular season team statistics and standings by year.
-**Synonyms**: Team records, Team standings, Season standings
+### `Hockey.GoaliesShootout`
+**Meaning:** Shootout-specific goaltender performance.  
+**Synonyms:** shootout stats, shootout records.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| year | BIGINT | Season year | season |
-| lgID | VARCHAR | League: NHA, NHL, PCHA, WCHL, WHA | league |
-| tmID | VARCHAR | Team identifier | team_code |
-| franchID | VARCHAR | Franchise identifier | franchise_code |
-| confID | VARCHAR | Conference: CC, EC, WA, WC | conference |
-| divID | VARCHAR | Division code | division |
-| rank | BIGINT | Final standings rank | standing |
-| playoff | VARCHAR | Playoff result or seed | playoff_result |
-| G | BIGINT | Games played | games |
-| W | BIGINT | Wins | wins |
-| L | BIGINT | Losses | losses |
-| T | BIGINT | Ties | ties |
-| OTL | VARCHAR | Overtime losses | ot_losses |
-| Pts | BIGINT | Points in standings | points |
-| SoW | VARCHAR | Shootout wins | shootout_wins |
-| SoL | VARCHAR | Shootout losses | shootout_losses |
-| GF | BIGINT | Goals for | goals_for |
-| GA | BIGINT | Goals against | goals_against |
-| name | VARCHAR | Team name | team_name |
-| PIM | VARCHAR | Total penalties in minutes | penalties |
-| BenchMinor | VARCHAR | Bench minor penalties | bench_minors |
-| PPG | VARCHAR | Power play goals | pp_goals |
-| PPC | VARCHAR | Power play chances | pp_chances |
-| SHA | VARCHAR | Short-handed assists | sh_assists |
-| PKG | VARCHAR | Penalty kill goals | pk_goals |
-| PKC | VARCHAR | Penalty kill chances | pk_chances |
-| SHF | VARCHAR | Short-handed for | sh_for |
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `stint` | Stint number |
+| `tmID` | Team identifier |
+| `W`, `L` | Shootout wins and losses |
+| `SA` | Shootout attempts against |
+| `GA` | Shootout goals allowed |
 
 ---
 
-### Hockey.TeamsPost
-**Meaning**: Playoff season team statistics by year.
-**Synonyms**: Playoff team records, Postseason standings
+### `Hockey.Scoring` (Shootout variant: `Hockey.ScoringShootout`)
+**Meaning:** Shootout-specific player scoring.  
+**Synonyms:** shootout goals, shootout stats.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| year | BIGINT | Season year | season |
-| lgID | VARCHAR | League: NHA, NHL, PCHA, WCHL, WHA | league |
-| tmID | VARCHAR | Team identifier | team_code |
-| G | BIGINT | Playoff games played | games |
-| W | BIGINT | Playoff wins | wins |
-| L | BIGINT | Playoff losses | losses |
-| T | BIGINT | Playoff ties | ties |
-| GF | BIGINT | Playoff goals for | goals_for |
-| GA | BIGINT | Playoff goals against | goals_against |
-| PIM | VARCHAR | Playoff penalties | penalties |
-| BenchMinor | VARCHAR | Playoff bench minors | bench_minors |
-| PPG | VARCHAR | Playoff power play goals | pp_goals |
-| PPC | VARCHAR | Playoff power play chances | pp_chances |
-| SHA | VARCHAR | Playoff short-handed assists | sh_assists |
-| PKG | VARCHAR | Playoff penalty kill goals | pk_goals |
-| PKC | VARCHAR | Playoff penalty kill chances | pk_chances |
-| SHF | VARCHAR | Playoff short-handed for | sh_for |
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `stint` | Stint number |
+| `tmID` | Team identifier |
+| `S` | Shootout attempts |
+| `G` | Shootout goals; **do NOT include in official career goal totals** |
+| `GDG` | Game-deciding goals (shootout winners) |
 
 ---
 
-### Hockey.SeriesPost
-**Meaning**: Playoff series results between two teams.
-**Synonyms**: Playoff matchups, Series results, Playoff brackets
+### `Hockey.Teams`
+**Meaning:** Regular season team statistics and standings.  
+**Synonyms:** team stats, team records, standings.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| year | BIGINT | Season year | season |
-| round | VARCHAR | Playoff round: ACF, CF, CQF, CSF, DF, DSF, F, Pre, QF, SCF, SCSF, SF, WP | round_name |
-| series | VARCHAR | Series identifier (A-O) | series_id |
-| tmIDWinner | VARCHAR | Winning team identifier | winner_team |
-| lgIDWinner | VARCHAR | Winning team league | winner_league |
-| tmIDLoser | VARCHAR | Losing team identifier | loser_team |
-| lgIDLoser | VARCHAR | Losing team league | loser_league |
-| W | BIGINT | Wins by winner | series_wins |
-| L | BIGINT | Wins by loser | series_losses |
-| T | BIGINT | Ties in series | series_ties |
-| GoalsWinner | BIGINT | Total goals scored by winner | winner_goals |
-| GoalsLoser | BIGINT | Total goals scored by loser | loser_goals |
-| note | VARCHAR | Special notes: DEF, EX, ND, TG | series_note |
-
----
-
-### Hockey.AwardsPlayers
-**Meaning**: Individual player awards and honors by year.
-**Synonyms**: Player awards, Individual honors, Award records
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| playerID | VARCHAR | Player identifier (FK to Master) | player_key |
-| award | VARCHAR | Award name (Hart, Vezina, Norris, etc.) | award_name |
-| year | BIGINT | Award year | season |
-| lgID | VARCHAR | League: NHL, WHA | league |
-| note | VARCHAR | Award context: MVP, Rookie, Scoring, shared, tie, Best Defenceman, Best Goaltender, Most Gentlemanly | award_note |
-| pos | VARCHAR | Position of awardee | position |
+| Column | Notes |
+|--------|-------|
+| `year` | Season year |
+| `lgID` | League |
+| `tmID` | Team identifier |
+| `franchID` | Franchise identifier (for relocations) |
+| `confID` | Conference: `CC` (Campbell), `EC` (Eastern), `WA` (Wales), `WC` (Western) |
+| `divID` | Division code (e.g., `AD` Adams, `PC` Pacific) |
+| `rank` | Standings rank within league |
+| `playoff` | Non-null if team made playoffs |
+| `G` | Games played; **flag if < 41 for home games** |
+| `W`, `L`, `T`, `OTL` | Wins, losses, ties, overtime losses |
+| `Pts` | Points (standings) |
+| `SoW`, `SoL` | Shootout wins and losses |
+| `GF`, `GA` | Goals for and against |
+| `PIM`, `BenchMinor` | Team penalties and bench minors |
+| `PPG`, `PPC` | Power-play goals and chances |
+| `SHA`, `PKG`, `PKC` | Short-handed against, penalty-kill goals, penalty-kill chances |
+| `SHF` | Short-handed for |
 
 ---
 
-### Hockey.AwardsCoaches
-**Meaning**: Individual coach awards and honors by year.
-**Synonyms**: Coach awards, Coaching honors
+### `Hockey.TeamsPost`
+**Meaning:** Playoff team statistics.  
+**Synonyms:** playoff team stats, postseason records.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| coachID | VARCHAR | Coach identifier (FK to Master) | coach_key |
-| award | VARCHAR | Award: Baldwin, First Team All-Star, Jack Adams, Schmertz, Second Team All-Star | award_name |
-| year | BIGINT | Award year | season |
-| lgID | VARCHAR | League: NHL, WHA | league |
-| note | VARCHAR | Additional notes | award_note |
-
----
-
-### Hockey.AwardsMisc
-**Meaning**: Miscellaneous awards (Patrick Trophy) to individuals and teams.
-**Synonyms**: Special awards, Institutional awards
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| name | VARCHAR | Recipient name | recipient |
-| ID | VARCHAR | Recipient identifier | recipient_id |
-| award | VARCHAR | Award: Patrick | award_name |
-| year | BIGINT | Award year | season |
-| lgID | VARCHAR | League: NHL | league |
-| note | VARCHAR | Special notes: posthumous | award_note |
+| Column | Notes |
+|--------|-------|
+| `year`, `lgID`, `tmID` | Season, league, team |
+| `G`, `W`, `L`, `T` | Playoff games, wins, losses, ties |
+| `GF`, `GA` | Playoff goals for and against |
+| `PIM`, `BenchMinor`, `PPG`, `PPC`, `SHA`, `PKG`, `PKC`, `SHF` | Playoff discipline and special-teams stats |
 
 ---
 
-### Hockey.HOF
-**Meaning**: Hall of Fame induction records.
-**Synonyms**: Hall of Fame, HOF inductions, Enshrinements
+### `Hockey.TeamSplits`
+**Meaning:** Team performance split by home/road and by month.  
+**Synonyms:** team splits, monthly performance, home/road splits.
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| year | BIGINT | Induction year | induction_year |
-| hofID | VARCHAR | Hall of Fame identifier | hof_key |
-| name | VARCHAR | Inductee name | inductee |
-| category | VARCHAR | Category: Player, Builder, Referee/Linesman | inductee_category |
-
----
-
-### Hockey.Goalies (Stanley Cup era)
-**Meaning**: Goaltending statistics for Stanley Cup playoff era (pre-modern).
-**Synonyms**: GoaliesSC, Stanley Cup goalies, Historic goalie records
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| playerID | VARCHAR | Goalie identifier | goalie_key |
-| year | BIGINT | Season year | season |
-| tmID | VARCHAR | Team identifier | team_code |
-| lgID | VARCHAR | League: NHA, NHL, PCHA, WCHL | league |
-| GP | BIGINT | Games played | games |
-| Min | BIGINT | Minutes played | minutes |
-| W | BIGINT | Wins | wins |
-| L | BIGINT | Losses | losses |
-| T | BIGINT | Ties | ties |
-| SHO | BIGINT | Shutouts | shutouts |
-| GA | BIGINT | Goals against | goals_against |
+| Column | Notes |
+|--------|-------|
+| `year`, `lgID`, `tmID` | Season, league, team |
+| `hW`, `hL`, `hT`, `hOTL` | Home wins, losses, ties, OTL |
+| `rW`, `rL`, `rT`, `rOTL` | Road wins, losses, ties, OTL |
+| `SepW`, `SepL`, `SepT`, `SepOL` | September performance |
+| `OctW`, `OctL`, `OctT`, `OctOL` | October performance |
+| `NovW`, `NovL`, `NovT`, `NovOL` | November performance |
+| `DecW`, `DecL`, `DecT`, `DecOL` | December performance |
+| `JanW`, `JanL`, `JanT`, `JanOL` | January performance |
+| `FebW`, `FebL`, `FebT`, `FebOL` | February performance |
+| `MarW`, `MarL`, `MarT`, `MarOL` | March performance |
+| `AprW`, `AprL`, `AprT`, `AprOL` | April performance |
 
 ---
 
-### Hockey.GoaliesShootout
-**Meaning**:
+### `Hockey.TeamVsTeam`
+**Meaning:** Head-to-head team records.  
+**Synonyms:** team matchups, head-to-head records.
+
+| Column | Notes |
+|--------|-------|
+| `year`, `lgID`, `tmID`, `oppID` | Season, league, team, opponent |
+| `W`, `L`, `T`, `OTL` | Record in matchup |
+
+---
+
+### `Hockey.SeriesPost`
+**Meaning:** Playoff series results.  
+**Synonyms:** playoff series, postseason matchups.
+
+| Column | Notes |
+|--------|-------|
+| `year` | Season year |
+| `round` | Round code: `Pre` (preliminary), `QF` (quarterfinal), `CF` (conference final), `SCF` (Stanley Cup final), etc. |
+| `series` | Series identifier (A–O) |
+| `tmIDWinner`, `lgIDWinner` | Winning team and league |
+| `tmIDLoser`, `lgIDLoser` | Losing team and league |
+| `W`, `L`, `T` | Series result (wins, losses, ties) |
+| `GoalsWinner`, `GoalsLoser` | Total goals in series |
+| `note` | Special notation: `EX` (exhibition), `TG` (two-game), `ND` (no decision), `DEF` (default) |
+
+---
+
+### `Hockey.Coaches`
+**Meaning:** Coach season-by-season records.  
+**Synonyms:** coaching records, coach stats.
+
+| Column | Notes |
+|--------|-------|
+| `coachID` | Links to `Master` |
+| `year` | Season year |
+| `tmID` | Team identifier |
+| `lgID` | League |
+| `stint` | Stint number within season |
+| `notes` | Special notation: `interim`, `co-coach with [name]` |
+| `g`, `w`, `l`, `t` | Regular season games, wins, losses, ties |
+| `postg`, `postw`, `postl`, `postt` | Playoff games, wins, losses, ties |
+
+---
+
+### `Hockey.AwardsPlayers`
+**Meaning:** Individual player awards and honors.  
+**Synonyms:** player awards, honors, accolades.
+
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `award` | Award name (e.g., `Hart`, `Norris`, `Vezina`, `Calder`, `First Team All-Star`, `Second Team All-Star`) |
+| `year` | Award year |
+| `lgID` | League |
+| `note` | Award context: `MVP`, `Best Defenceman`, `Best Goaltender`, `Rookie`, `Scoring`, `Most Gentlemanly`, `shared`, `tie` |
+| `pos` | Position of awardee |
+
+---
+
+### `Hockey.AwardsCoaches`
+**Meaning:** Coach awards.  
+**Synonyms:** coach awards, coaching honors.
+
+| Column | Notes |
+|--------|-------|
+| `coachID` | Links to `Master` |
+| `award` | Award: `Jack Adams`, `First Team All-Star`, `Second Team All-Star`, `Baldwin`, `Schmertz` |
+| `year` | Award year |
+| `lgID` | League |
+| `note` | Additional context |
+
+---
+
+### `Hockey.AwardsMisc`
+**Meaning:** Miscellaneous awards (e.g., Patrick Trophy).  
+**Synonyms:** special awards, honorary awards.
+
+| Column | Notes |
+|--------|-------|
+| `name` | Recipient name (may be team or individual) |
+| `ID` | Recipient identifier (may be NULL for teams) |
+| `award` | Award type: `Patrick` |
+| `year` | Award year |
+| `lgID` | League |
+| `note` | Special notation: `posthumous` |
+
+---
+
+### `Hockey.HOF`
+**Meaning:** Hall of Fame inductions.  
+**Synonyms:** Hall of Fame, HOF, inductions.
+
+| Column | Notes |
+|--------|-------|
+| `year` | Induction year |
+| `hofID` | Hall of Fame identifier; links to `Master.hofID` |
+| `name` | Inductee name |
+| `category` | `Player`, `Builder`, `Referee/Linesman` |
+
+---
+
+### `Hockey.ScoringSC` (Stanley Cup era)
+**Meaning:** Scoring statistics from Stanley Cup era (pre-NHL consolidation).  
+**Synonyms:** Stanley Cup stats, early era scoring.
+
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `tmID` | Team (Stanley Cup era codes: `MTL`, `OTS`, `VML`, etc.) |
+| `lgID` | League: `NHA`, `NHL`, `PCHA`, `WCHL` |
+| `pos` | Position |
+| `GP`, `G`, `A`, `Pts`, `PIM` | Games, goals, assists, points, penalties |
+
+---
+
+### `Hockey.GoaliesSC` (Stanley Cup era)
+**Meaning:** Goaltending statistics from Stanley Cup era.  
+**Synonyms:** Stanley Cup goalie stats, early era goaltending.
+
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `tmID` | Team (Stanley Cup era codes) |
+| `lgID` | League |
+| `GP`, `Min`, `W`, `L`, `T`, `SHO`, `GA` | Games, minutes, wins, losses, ties, shutouts, goals against |
+
+---
+
+### `Hockey.TeamsSC` (Stanley Cup era)
+**Meaning:** Team statistics from Stanley Cup era.  
+**Synonyms:** Stanley Cup team stats, early era team records.
+
+| Column | Notes |
+|--------|-------|
+| `year`, `lgID`, `tmID` | Season, league, team |
+| `G`, `W`, `L`, `T` | Games, wins, losses, ties |
+| `GF`, `GA` | Goals for and against |
+| `PIM` | Team penalties |
+
+---
+
+### `Hockey.TeamsHalf`
+**Meaning:** Team performance split by season half (early era only).  
+**Synonyms:** half-season splits, season halves.
+
+| Column | Notes |
+|--------|-------|
+| `year`, `lgID`, `tmID` | Season, league, team |
+| `half` | Half number (1 or 2) |
+| `rank` | Rank within half |
+| `G`, `W`, `L`, `T` | Games, wins, losses, ties |
+| `GF`, `GA` | Goals for and against |
+
+---
+
+### `Hockey.ScoringSup`
+**Meaning:** Supplementary scoring data (power-play and short-handed assists).  
+**Synonyms:** supplementary stats, special teams assists.
+
+| Column | Notes |
+|--------|-------|
+| `playerID` | Links to `Master` |
+| `year` | Season year |
+| `PPA` | Power-play assists (supplementary) |
+| `SHA` | Short-handed assists (supplementary) |
+
+---
+
+### `Hockey.abbrev`
+**Meaning:** Abbreviation reference table.  
+**Synonyms:** code reference, abbreviation lookup.
+
+| Column | Notes |
+|--------|-------|
+| `Type` | Category: `Conference`, `Division`, `Playoffs`, `Round` |
+| `Code` | Abbreviation (e.g., `EC`, `AD`, `QF`) |
+| `Fullname` | Full name (e.g., `Eastern Conference`, `Adams Division`, `Quarterfinal`) |

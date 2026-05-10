@@ -88,10 +88,15 @@ def _find_schema_fn(query: str) -> str:
     results: list[str] = []
     for schema in guides_to_return:
         guide_path = _GENERATED_GUIDES_DIR / f"{schema}.md"
+        banner = (
+            f"SQL SCHEMA NAME (use this exactly in all queries and tool calls): {schema}\n"
+            f"Example: SELECT ... FROM {schema}.tablename ...\n"
+            f"         list_tables('{schema}')  |  describe_table('{schema}', 'tablename')\n"
+        )
         if guide_path.exists():
-            results.append(f"=== Schema: {schema} ===\n\n{guide_path.read_text(encoding='utf-8')}")
+            results.append(f"=== Schema: {schema} ===\n\n{banner}\n{guide_path.read_text(encoding='utf-8')}")
         else:
-            results.append(f"=== Schema: {schema} ===\n\n(guide file missing)")
+            results.append(f"=== Schema: {schema} ===\n\n{banner}\n(guide file missing)")
 
     header = f"Best match: {best_schema} (score={best_score:.3f})"
     if len(guides_to_return) > 1:
@@ -105,9 +110,10 @@ FIND_SCHEMA = Tool(
     name="find_schema",
     description=(
         "Find the schema guide most relevant to your question. "
-        "Returns the full guide including exact table names, column names, join paths, "
-        "business rules as SQL conditions, and a synonym glossary. "
-        "Call this first — it gives you everything you need to write the SQL."
+        "Returns the full guide including: the EXACT schema name to use in SQL (e.g. 'ErgastF1', "
+        "'lahman_2014') — use it verbatim in FROM clauses and in list_tables/describe_table calls; "
+        "exact table and column names; join paths; business rules as SQL conditions; "
+        "and a synonym glossary. Call this first."
     ),
     parameters={
         "type": "object",

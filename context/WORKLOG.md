@@ -35,7 +35,7 @@ Start time: 2:03 pm JST
   * Softened prompt: STRICT RULES → ANTI-LOOP RULES advisory block (NEVER → "at most once"); added explicit "ALWAYS call list_tables" in workflow step 3.
   * Result: **17/64 hard (26.6%)** — severe regression. AGENT_ERROR exploded (7→32); tokens tripled (1.99M→3.48M). Advisory language was insufficient to stop re-exploration loops.
   * Key lesson: Model requires NEVER/STRICT language to override re-exploration tendency. "At most once" is interpreted permissively.
-* **Run 5 candidate (not yet run):** Restored STRICT RULES language + kept `world` schema fix + added explicit "ALWAYS call list_tables — table names are case-sensitive and WILL differ from guide descriptions" to address the SQL_ERROR issue from run 3.
+* **Discarded prompt-engineering attempt (never run):** Restored STRICT RULES language + kept `world` schema fix + added explicit "ALWAYS call list_tables — table names are case-sensitive and WILL differ from guide descriptions" to address the SQL_ERROR issue from run 3. Abandoned in favour of the generated-guides approach; no log exists for this.
 * **Reverted to Run 1 state** (`git checkout 482a275 -- framework/agent.py tools/guide_tools.py`). Reproduction run (`logs/run_20260510_063816/`) confirmed code is correct: navigation funnel identical to Run 1 (57/64 schema, 51/64 tables), with variance only in the logic step (17 vs 25 passes). Run 5 prompt changes discarded in favour of a new approach.
 * **New approach decided:** LLM-synthesized schema guides — preprocess each schema into a comprehensive guide fusing exact table/column names with business rules as SQL conditions, embed for semantic retrieval, replace the current multi-step navigation workflow with a single `find_schema` tool call. Plan written to `context/PLAN_generated_guides.md`.
 * **Phase 2 implementation:**
@@ -44,4 +44,20 @@ Start time: 2:03 pm JST
   * `evaluate.py` / `interactive.py`: replaced `search_guides`, `read_guide`, `list_schemas`, `sample_rows` with `find_schema`. Active tools: `find_schema`, `list_tables`, `describe_table`, `run_sql`, `submit_answer`.
   * `framework/agent.py`: simplified system prompt — `find_schema → run_sql → submit_answer` happy path; `list_tables`/`describe_table` as explicit fallbacks. Anti-loop rules removed (no longer needed — single `find_schema` call replaces the full navigation chain).
   * **Build run:** 76 guides generated, all validated — zero hallucinated table or column names across all guides. Spot-check of SQL conditions (world, Accidents, Airline, Chess) confirmed all correct against live DB. One validator false positive: `trains` schema has a table named `trains` — `trains.trains` is a valid schema.table reference, not a hallucinated column.
+* **Phase 2 eval runs (hard only):**
+  * **Run 5** (`logs/run_20260510_072957/`): First Phase 2 eval — **21/64 hard (32.8%)**. Schema retrieval 88%, table ok 78%, logic 33%. Two dominant failure patterns identified via spot-check: (1) AGENT_ERROR re-exploration loops on ErgastF1 and lahman_2014 — agent ignores schema name from find_schema and tries variants like `list_tables("f1")`. (2) 32 MISMATCH cases with correct tables but wrong SQL logic.
+  * Root causes: (a) find_schema response didn't make schema name salient as the exact SQL identifier; (b) all 76 generated guides were truncated mid-content — max_tokens=4096 cut off join paths, business rules, and glossary sections; (c) join path SQL used bare table names, potentially misleading agent.
+* **Run 6** (`logs/run_20260510_075148/`, hard only, ~$1.00): Phase 2 v2 with fixed guides.
+  * Result: **21/64 hard (32.8%)** — same pass count as Run 5.
+  * Navigation fixes worked: AGENT_ERROR 11→2, schema 88%→94%, tables 78%→84%. ErgastF1/lahman_2014 loops resolved.
+  * MISMATCH rose 32→40 — more cases now reach logic stage, still fail. Logic is sole bottleneck.
+  * Token usage fell 40% (1.7M→1.0M): more focused guide structure (join paths first, concise columns).
+  * Top failing schemas: financial (7), Credit (6), Airline (6), lahman_2014 (5), Chess (4), employee (4), ErgastF1 (4).
+* **Phase 2 guide fixes:**
+  * Raised synthesis max_tokens 4096 → 8192.
+  * Reordered guide sections: join paths + business rules + glossary moved before exhaustive table reference, so truncation only clips column docs (critical content now survives).
+  * Updated synthesis prompt to require fully-qualified `Schema.table` in all SQL snippets.
+  * Added prominent banner to each `find_schema` response: `SQL SCHEMA NAME (use this exactly): ErgastF1` + usage examples.
+  * Updated system prompt: "use schema name verbatim — do NOT try alternative spellings."
+  * Two full guide regenerations done (~$1.05 each). 55/76 guides still hit the 8192 token cap but all now include join paths + business rules. Cost note added to script docstring and STATE.md.
 * **`scripts/analyze_run.py` upgraded:** Added three-stage navigation funnel (right schema / right tables / right logic), per-case diagnostic indicators (✓/✗ with explored schemas, missed tables, guide names, tool sequence), and funnel columns to CSV output. Key finding from re-running all logs: navigation is not the bottleneck — Run 4 achieved 100% schema and 94% table identification yet only 27% pass rate. Wrong logic (27–43 cases/run) dominates wrong schema (0–8) and wrong tables (0–12) combined in every run. `context/RESULTS.md` updated with full funnel table and this analysis.

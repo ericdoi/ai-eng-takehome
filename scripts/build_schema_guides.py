@@ -9,6 +9,9 @@ Usage:
     source .env && uv run python scripts/build_schema_guides.py
     uv run python scripts/build_schema_guides.py --skip-llm        # re-embed only
     uv run python scripts/build_schema_guides.py --schema world    # single schema
+
+Cost: ~$1.05 per full 76-schema regeneration (anthropic/claude-haiku-4-5 synthesis +
+openai/text-embedding-3-small embeddings via OpenRouter, measured 2026-05-10).
 """
 
 from __future__ import annotations
@@ -189,26 +192,33 @@ Here is the full schema structure for the `{schema}` schema:
 
 {rules_section}
 
-Write a comprehensive reference guide for an AI SQL agent that needs to write SQL queries \
-against this schema. Include:
+Write a reference guide for an AI SQL agent querying this schema. Be concise — \
+omit obvious columns (id, name, description) unless they have non-obvious semantics or \
+important enumerated values.
+
+CRITICAL: Every table reference in SQL snippets MUST use the fully-qualified form \
+`{schema}.TableName`. Never use bare table names in SQL. For example:
+  ✓ FROM {schema}.results r JOIN {schema}.drivers d ON r.driverId = d.driverId
+  ✗ FROM results r JOIN drivers d ON r.driverId = d.driverId
+
+Write the sections in this order (most important first):
 
 1. **Schema summary**: one sentence describing what this schema contains.
 
-2. **Table reference** (for each table):
-   - Exact table name and qualified form: `{schema}.TableName`
-   - Plain-English meaning and common synonym names
-   - Each column: exact name, type, meaning, and common synonyms
-   - Notable values or enumerations (exact strings from sample data)
+2. **Join paths**: exact SQL JOIN snippets (fully-qualified) for common table combinations.
 
-3. **Join paths**: exact SQL JOIN conditions between related tables.
-
-4. **Business rules as SQL** (if rules provided): restate each rule as the exact SQL \
-condition, column reference, or JOIN pattern that implements it. Format:
+3. **Business rules as SQL** (if rules provided): each rule as the exact SQL condition \
+or filter. Format:
    - Rule: "language percentage exceeds 90%" → `WHERE cl.Percentage > 90`
    - Rule: "on-time flight" → `WHERE ArrDelayMinutes <= 15`
 
-5. **Synonym glossary**: map common question terms to exact schema identifiers.
-   Format: "career hits" → `SUM(batting.H)`, "dominant language" → `WHERE Percentage > 90`
+4. **Synonym glossary**: map common question terms to exact schema identifiers.
+   Format: "career hits" → `SUM({schema}.batting.H)`, "dominant language" → `WHERE Percentage > 90`
+
+5. **Table reference** (for each table):
+   - Qualified name `{schema}.TableName`, plain-English meaning, synonym names
+   - Only columns with non-obvious semantics, important enum values, or tricky joins
+   - Notable enumerated values (exact strings from sample data)
 
 Keep the guide focused and scannable. Do not add caveats or padding."""
 
@@ -243,7 +253,7 @@ def synthesize_guide(
                         {"role": "system", "content": _SYNTHESIS_SYSTEM},
                         {"role": "user", "content": user_msg},
                     ],
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,
                     "temperature": 0.0,
                 },
                 timeout=90.0,

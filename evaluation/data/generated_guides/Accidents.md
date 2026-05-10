@@ -1,175 +1,159 @@
 # Accidents Schema Reference Guide
 
 ## Schema Summary
-The Accidents schema contains traffic incident records with involved persons, administrative jurisdictions, and geographic coordinates for safety analysis and compliance reporting.
-
----
-
-## Table Reference
-
-### Table: `Accidents.nesreca`
-**Meaning:** Traffic accident/incident record (synonyms: incident, crash, accident event)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_nesreca` | VARCHAR | Unique accident identifier | accident ID, incident ID |
-| `klas_nesreca` | VARCHAR | Accident severity classification | severity class, classification |
-| | | **Values:** B (minor), H (serious), L (light), P (property damage), S (severe), U (unknown) | |
-| `upravna_enota` | VARCHAR | Administrative unit code where accident occurred | admin unit, jurisdiction |
-| `cas_nesreca` | TIMESTAMP | Date and time of accident | accident time, incident time, datetime |
-| `naselje_ali_izven` | VARCHAR | Urban (D) or rural (N) location | settlement type, location type |
-| | | **Values:** D (urban/settlement), N (rural/outside) | |
-| `kategorija_cesta` | VARCHAR | Road category | road type, road class |
-| | | **Values:** 0–5 (numeric), A, H, L, M, N, R, T, V (letter codes) | |
-| `oznaka_cesta_ali_naselje` | VARCHAR | Road or settlement code | road code, location code |
-| `tekst_cesta_ali_naselje` | VARCHAR | Road or settlement name | road name, location name |
-| `oznaka_odsek_ali_ulica` | VARCHAR | Road section or street code | section code, street code |
-| `tekst_odsek_ali_ulica` | VARCHAR | Road section or street name | section name, street name |
-| `stacionazna_ali_hisna_st` | VARCHAR | Station number or house number | station number, address number |
-| `opis_prizorisce` | VARCHAR | Scene description/type | scene type, location description |
-| | | **Values:** A, C, K, M, N, P, R, Z, Ž | |
-| `vzrok_nesreca` | VARCHAR | Cause of accident | accident cause, cause code |
-| | | **Values:** CE, HI, NP, OS, PD, PR, PV, SV, TO, VO, VR | |
-| `tip_nesreca` | VARCHAR | Type of accident | accident type, incident type |
-| | | **Values:** BT, NT, OP, OS, PP, PR, PZ, TO, TV, ÈT | |
-| `vreme_nesreca` | VARCHAR | Weather conditions | weather, weather code |
-| | | **Values:** D, J, M, N, O, S, T, V | |
-| `stanje_promet` | VARCHAR | Traffic conditions | traffic state, traffic condition |
-| | | **Values:** E, G, N, R, Z | |
-| `stanje_vozisce` | VARCHAR | Road surface condition | road condition, surface condition |
-| | | **Values:** BL, MO, OS, PN, PP, SL, SN, SP, SU | |
-| `stanje_povrsina_vozisce` | VARCHAR | Road surface type | surface type, pavement type |
-| | | **Values:** A, M, O | |
-| `x` | BIGINT | X coordinate (local projection) | x coord, easting |
-| `y` | BIGINT | Y coordinate (local projection) | y coord, northing |
-| `x_wgs84` | DOUBLE | X coordinate (WGS84 longitude) | longitude, wgs84_x |
-| `y_wgs84` | DOUBLE | Y coordinate (WGS84 latitude) | latitude, wgs84_y |
-
----
-
-### Table: `Accidents.oseba`
-**Meaning:** Person involved in accident (synonyms: participant, person record, individual)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_nesreca` | VARCHAR | Foreign key to accident | accident ID, incident ID |
-| `povzrocitelj_ali_udelezenec` | VARCHAR | Role: cause/responsible (D) or participant (N) | role, responsibility, participant type |
-| | | **Values:** D (cause/responsible), N (participant) | |
-| `starost` | BIGINT | Age in years | age, years old |
-| `spol` | VARCHAR | Gender | gender, sex |
-| | | **Values:** 0 (unknown), 1 (male), 2 (female) | |
-| `upravna_enota` | VARCHAR | Administrative unit of person's residence | admin unit, jurisdiction |
-| `drzavljanstvo` | VARCHAR | Citizenship code | citizenship, nationality |
-| `poskodba` | VARCHAR | Injury severity | injury, injury type, injury severity |
-| | | **Values:** (empty), B, H, L, P, S, U | |
-| `vrsta_udelezenca` | VARCHAR | Type of participant | participant type, person type |
-| `varnostni_pas_ali_celada` | VARCHAR | Safety belt or helmet use | safety equipment, belt/helmet |
-| | | **Values:** * (unknown), 0, 1, 2, D, N | |
-| `vozniski_staz_LL` | BIGINT | Driving experience (years) | driving experience, years driving |
-| `vozniski_staz_MM` | BIGINT | Driving experience (months) | driving experience months |
-| `alkotest` | DOUBLE | Alcohol test result (BAC) | alcohol level, BAC, breathalyzer |
-| `strokovni_pregled` | DOUBLE | Expert examination result | expert test, technical test |
-| `starost_d` | VARCHAR | Age category | age group, age category |
-| | | **Values:** A–J, N (categories) | |
-| `vozniski_staz_d` | VARCHAR | Driving experience category | experience category, experience group |
-| | | **Values:** A–J, N (categories) | |
-| `alkotest_d` | VARCHAR | Alcohol level category | alcohol category, BAC category |
-| | | **Values:** A–J, N (categories) | |
-| `strokovni_pregled_d` | VARCHAR | Expert test result category | expert test category, test category |
-| | | **Values:** A–J, N (categories) | |
-
----
-
-### Table: `Accidents.upravna_enota`
-**Meaning:** Administrative unit/jurisdiction reference (synonyms: administrative region, jurisdiction, district)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `id_upravna_enota` | VARCHAR | Administrative unit code (primary key) | admin unit ID, jurisdiction code |
-| `ime_upravna_enota` | VARCHAR | Administrative unit name | admin unit name, jurisdiction name |
-| `st_prebivalcev` | BIGINT | Population count | population, inhabitants |
-| `povrsina` | BIGINT | Area in square kilometers | area, surface area, km² |
+This schema contains traffic accident incident records with involved persons, administrative jurisdictions, and geographic coordinates for safety analysis and compliance reporting.
 
 ---
 
 ## Join Paths
 
-**Accident to Person:**
+**Accidents by administrative unit:**
 ```sql
-nesreca.id_nesreca = oseba.id_nesreca
+FROM Accidents.nesreca n
+JOIN Accidents.upravna_enota u ON n.upravna_enota = u.id_upravna_enota
 ```
 
-**Accident to Administrative Unit:**
+**Persons involved in accidents:**
 ```sql
-nesreca.upravna_enota = upravna_enota.id_upravna_enota
+FROM Accidents.nesreca n
+JOIN Accidents.oseba o ON n.id_nesreca = o.id_nesreca
 ```
 
-**Person to Administrative Unit (residence):**
+**Full incident with persons and jurisdiction:**
 ```sql
-oseba.upravna_enota = upravna_enota.id_upravna_enota
+FROM Accidents.nesreca n
+JOIN Accidents.oseba o ON n.id_nesreca = o.id_nesreca
+JOIN Accidents.upravna_enota u ON n.upravna_enota = u.id_upravna_enota
 ```
 
 ---
 
 ## Business Rules as SQL
 
-| Rule | SQL Implementation |
-|------|-------------------|
-| Only completed investigations in official statistics | `WHERE id_nesreca IS NOT NULL AND cas_nesreca IS NOT NULL AND upravna_enota IS NOT NULL` |
-| Fatality incidents take priority | `ORDER BY CASE WHEN klas_nesreca = 'S' THEN 0 ELSE 1 END` |
-| Injury severity hierarchy | `CASE WHEN poskodba = 'S' THEN 1 WHEN poskodba = 'H' THEN 2 WHEN poskodba = 'L' THEN 3 WHEN poskodba = 'P' THEN 4 WHEN poskodba = 'B' THEN 5 ELSE 6 END` |
-| Exclude unknown injury severity from distribution | `WHERE poskodba NOT IN ('U', '')` |
-| Urban vs. rural classification | `WHERE naselje_ali_izven = 'D'` (urban) or `WHERE naselje_ali_izven = 'N'` (rural) |
-| Responsible party identification | `WHERE povzrocitelj_ali_udelezenec = 'D'` |
-| Vulnerable road users | `WHERE vrsta_udelezenca IN ('PT', 'KO')` (pedestrian, cyclist) |
-| Night time block (0-4 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 0 AND EXTRACT(HOUR FROM cas_nesreca) < 4` |
-| Early morning block (4-8 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 4 AND EXTRACT(HOUR FROM cas_nesreca) < 8` |
-| Morning block (8-12 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 8 AND EXTRACT(HOUR FROM cas_nesreca) < 12` |
-| Afternoon block (12-16 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 12 AND EXTRACT(HOUR FROM cas_nesreca) < 16` |
-| Evening block (16-20 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 16 AND EXTRACT(HOUR FROM cas_nesreca) < 20` |
-| Late block (20-24 hours) | `WHERE EXTRACT(HOUR FROM cas_nesreca) >= 20 AND EXTRACT(HOUR FROM cas_nesreca) < 24` |
-| Weekend period (Sat 6PM–Mon 6AM) | `WHERE (EXTRACT(DOW FROM cas_nesreca) = 6 AND EXTRACT(HOUR FROM cas_nesreca) >= 18) OR (EXTRACT(DOW FROM cas_nesreca) = 0) OR (EXTRACT(DOW FROM cas_nesreca) = 1 AND EXTRACT(HOUR FROM cas_nesreca) < 6)` |
-| Impaired driving indicator | `WHERE alkotest > 0.5` |
-| Safety equipment not used | `WHERE varnostni_pas_ali_celada IN ('N', '0')` |
-| Per 100,000 population rate | `(COUNT(*) * 100000.0) / st_prebivalcev` |
+**Rule: Include only completed investigations in official statistics**
+```sql
+WHERE n.klas_nesreca IS NOT NULL 
+  AND n.vzrok_nesreca IS NOT NULL 
+  AND n.tip_nesreca IS NOT NULL
+```
+
+**Rule: Fatality incidents take priority classification**
+```sql
+WHERE n.klas_nesreca = 'S' OR o.poskodba = 'S'
+```
+
+**Rule: Exclude unknown injury severity from severity distribution**
+```sql
+WHERE o.poskodba NOT IN ('', NULL)
+```
+
+**Rule: Vulnerable road users (pedestrians, cyclists)**
+```sql
+WHERE o.vrsta_udelezenca IN ('PT', 'KO')
+```
+
+**Rule: Time-of-day blocks (extract hour from cas_nesreca)**
+```sql
+-- Night (0-4): EXTRACT(HOUR FROM n.cas_nesreca) < 4
+-- Early (4-8): EXTRACT(HOUR FROM n.cas_nesreca) >= 4 AND < 8
+-- Morning (8-12): EXTRACT(HOUR FROM n.cas_nesreca) >= 8 AND < 12
+-- Afternoon (12-16): EXTRACT(HOUR FROM n.cas_nesreca) >= 12 AND < 16
+-- Evening (16-20): EXTRACT(HOUR FROM n.cas_nesreca) >= 16 AND < 20
+-- Late (20-24): EXTRACT(HOUR FROM n.cas_nesreca) >= 20
+```
+
+**Rule: Weekend incidents (Saturday 6PM – Monday 6AM)**
+```sql
+WHERE (EXTRACT(DOW FROM n.cas_nesreca) = 6 AND EXTRACT(HOUR FROM n.cas_nesreca) >= 18)
+   OR (EXTRACT(DOW FROM n.cas_nesreca) = 0)
+   OR (EXTRACT(DOW FROM n.cas_nesreca) = 1 AND EXTRACT(HOUR FROM n.cas_nesreca) < 6)
+```
+
+**Rule: Normalize statistics per 100,000 population**
+```sql
+SELECT COUNT(*) * 100000.0 / u.st_prebivalcev AS rate_per_100k
+FROM Accidents.nesreca n
+JOIN Accidents.upravna_enota u ON n.upravna_enota = u.id_upravna_enota
+GROUP BY u.id_upravna_enota, u.st_prebivalcev
+```
 
 ---
 
 ## Synonym Glossary
 
-| Common Term | Exact Schema Reference |
-|-------------|------------------------|
-| accident | `nesreca` table |
-| incident | `nesreca` table |
-| crash | `nesreca` table |
-| person involved | `oseba` table |
-| participant | `oseba` table |
-| severity | `nesreca.klas_nesreca` |
-| injury | `oseba.poskodba` |
-| cause | `nesreca.vzrok_nesreca` |
-| accident type | `nesreca.tip_nesreca` |
-| weather | `nesreca.vreme_nesreca` |
-| road condition | `nesreca.stanje_vozisce` |
-| traffic condition | `nesreca.stanje_promet` |
-| location | `nesreca.tekst_cesta_ali_naselje` |
-| urban | `nesreca.naselje_ali_izven = 'D'` |
-| rural | `nesreca.naselje_ali_izven = 'N'` |
-| responsible party | `oseba.povzrocitelj_ali_udelezenec = 'D'` |
-| participant | `oseba.povzrocitelj_ali_udelezenec = 'N'` |
-| age | `oseba.starost` |
-| gender | `oseba.spol` |
-| driving experience | `oseba.vozniski_staz_LL` |
-| alcohol level | `oseba.alkotest` |
-| BAC | `oseba.alkotest` |
-| safety belt | `oseba.varnostni_pas_ali_celada` |
-| helmet | `oseba.varnostni_pas_ali_celada` |
-| administrative unit | `upravna_enota` table |
-| jurisdiction | `upravna_enota` table |
-| population | `upravna_enota.st_prebivalcev` |
-| area | `upravna_enota.povrsina` |
-| coordinates | `nesreca.x_wgs84, nesreca.y_wgs84` |
-| latitude | `nesreca.y_wgs84` |
-| longitude | `nesreca.x_wgs84` |
-| date/time | `nesreca.cas_nesreca` |
-| time of day | `EXTRACT(HOUR FROM nesreca.cas_nesreca)` |
-| day of week | `EXTRACT(DOW FROM nesreca.cas_nesreca)` |
+| Term | Schema Reference |
+|------|------------------|
+| accident severity | `Accidents.nesreca.klas_nesreca` |
+| injury type | `Accidents.oseba.poskodba` |
+| cause of accident | `Accidents.nesreca.vzrok_nesreca` |
+| accident type | `Accidents.nesreca.tip_nesreca` |
+| road category | `Accidents.nesreca.kategorija_cesta` |
+| scene description | `Accidents.nesreca.opis_prizorisce` |
+| traffic state | `Accidents.nesreca.stanje_promet` |
+| road surface condition | `Accidents.nesreca.stanje_vozisce` |
+| surface material | `Accidents.nesreca.stanje_povrsina_vozisce` |
+| weather/time of day | `Accidents.nesreca.vreme_nesreca` |
+| person role | `Accidents.oseba.povzrocitelj_ali_udelezenec` |
+| participant type | `Accidents.oseba.vrsta_udelezenca` |
+| safety equipment | `Accidents.oseba.varnostni_pas_ali_celada` |
+| alcohol test result | `Accidents.oseba.alkotest` |
+| driving experience (years) | `Accidents.oseba.vozniski_staz_LL` |
+| jurisdiction | `Accidents.upravna_enota.ime_upravna_enota` |
+| population | `Accidents.upravna_enota.st_prebivalcev` |
+
+---
+
+## Table Reference
+
+### `Accidents.nesreca`
+**Meaning:** Individual accident incident record.  
+**Synonyms:** accident, incident, crash, event.
+
+| Column | Semantics |
+|--------|-----------|
+| `id_nesreca` | Unique incident identifier. |
+| `klas_nesreca` | **Severity classification.** Enum: `B` (minor), `H` (serious), `L` (light), `P` (property damage), `S` (fatal), `U` (unknown). |
+| `upravna_enota` | Foreign key to `Accidents.upravna_enota.id_upravna_enota`. Administrative jurisdiction. |
+| `cas_nesreca` | Incident timestamp (YYYY-MM-DD HH:MM:SS). Use for temporal analysis and time-of-day blocks. |
+| `naselje_ali_izven` | Urban/rural indicator. Enum: `D` (urban/settlement), `N` (rural/outside). |
+| `kategorija_cesta` | Road category. Enum: `0–5` (local roads), `A` (motorway), `H` (highway), `L` (local), `M` (main), `N` (national), `R` (regional), `T` (transit), `V` (village). |
+| `vzrok_nesreca` | **Cause of accident.** Enum: `CE` (weather), `HI` (speed), `NP` (inattention), `OS` (other), `PD` (pedestrian), `PR` (driver error), `PV` (vehicle defect), `SV` (visibility), `TO` (road condition), `VO` (vehicle operation), `VR` (road design). |
+| `tip_nesreca` | **Accident type.** Enum: `BT` (rear-end), `NT` (head-on), `OP` (general), `OS` (side), `PP` (pedestrian), `PR` (property), `PZ` (parked vehicle), `TO` (rollover), `TV` (multi-vehicle), `ÈT` (other). |
+| `vreme_nesreca` | **Weather/time of day.** Enum: `D` (day), `J` (fog), `M` (darkness), `N` (night), `O` (rain), `S` (snow), `T` (twilight), `V` (wind). |
+| `stanje_promet` | Traffic state. Enum: `E` (congested), `G` (dense), `N` (normal), `R` (free-flowing), `Z` (stopped). |
+| `stanje_vozisce` | Road surface condition. Enum: `BL` (muddy), `MO` (wet), `OS` (icy), `PN` (snow), `PP` (flooded), `SL` (slippery), `SN` (snowy), `SP` (dry), `SU` (sandy). |
+| `stanje_povrsina_vozisce` | Surface material. Enum: `A` (asphalt), `M` (macadam), `O` (other). |
+| `x`, `y` | Coordinates in local projection system. |
+| `x_wgs84`, `y_wgs84` | WGS84 geographic coordinates (longitude, latitude). |
+
+### `Accidents.oseba`
+**Meaning:** Individual person involved in an accident.  
+**Synonyms:** participant, person, victim, driver, passenger, pedestrian.
+
+| Column | Semantics |
+|--------|-----------|
+| `id_nesreca` | Foreign key to `Accidents.nesreca.id_nesreca`. Links person to incident. |
+| `povzrocitelj_ali_udelezenec` | **Person role.** Enum: `D` (at-fault/driver), `N` (not at-fault/other participant). |
+| `starost` | Age in years. |
+| `spol` | Gender. Enum: `0` (unknown), `1` (male), `2` (female). |
+| `upravna_enota` | Administrative jurisdiction of person's residence. |
+| `drzavljanstvo` | Citizenship code (numeric). |
+| `poskodba` | **Injury severity.** Enum: `` (none/property only), `B` (minor), `H` (serious), `L` (light), `P` (property), `S` (fatal), `U` (unknown). Exclude empty/unknown from severity distributions. |
+| `vrsta_udelezenca` | Participant type. Examples: `TV` (driver), `OA` (passenger), `PT` (pedestrian), `KO` (cyclist). |
+| `varnostni_pas_ali_celada` | Safety equipment use. Enum: `*` (not applicable), `0` (not used), `1` (used), `2` (partial), `D` (unknown), `N` (not applicable). |
+| `vozniski_staz_LL` | Driving experience in years (months component). |
+| `vozniski_staz_MM` | Driving experience in months. |
+| `alkotest` | Alcohol test result (BAC value, numeric). |
+| `strokovni_pregled` | Expert examination result (numeric). |
+| `starost_d`, `vozniski_staz_d`, `alkotest_d`, `strokovni_pregled_d` | Data quality/completeness flags. Enum: `A–J` (data quality categories), `N` (not applicable/missing). |
+
+### `Accidents.upravna_enota`
+**Meaning:** Administrative jurisdiction (district/region).  
+**Synonyms:** administrative unit, jurisdiction, district, region.
+
+| Column | Semantics |
+|--------|-----------|
+| `id_upravna_enota` | Unique jurisdiction identifier. Foreign key in `Accidents.nesreca` and `Accidents.oseba`. |
+| `ime_upravna_enota` | Jurisdiction name (e.g., "Ljubljana", "Celje"). |
+| `st_prebivalcev` | Population count. Use for rate normalization (per 100,000 population). |
+| `povrsina` | Area in km². |

@@ -1,104 +1,90 @@
 # FNHK Schema Reference Guide
 
 ## Schema Summary
-The FNHK schema contains Czech healthcare hospitalization records, including patient cases (pripady), medical procedures performed (vykony), and pharmaceutical/material supplies used (zup).
-
----
-
-## Table Reference
-
-### Table: `FNHK.pripady`
-**Meaning:** Hospital admission cases; patient hospitalization episodes.
-**Synonyms:** cases, admissions, episodes, hospitalizations
-
-| Column Name | Type | Meaning | Synonyms |
-|---|---|---|---|
-| `Identifikace_pripadu` | BIGINT | Unique case identifier | case ID, case number |
-| `Identifikator_pacienta` | BIGINT | Unique patient identifier | patient ID, patient number |
-| `Kod_zdravotni_pojistovny` | BIGINT | Health insurance provider code | insurance code, payer code |
-| `Datum_prijeti` | DATE | Hospital admission date | admission date, check-in date |
-| `Datum_propusteni` | DATE | Hospital discharge date | discharge date, check-out date |
-| `Delka_hospitalizace` | BIGINT | Length of hospital stay in days | stay length, LOS, hospitalization days |
-| `Vekovy_Interval_Pacienta` | VARCHAR | Patient age group bracket | age group, age interval, age bracket |
-| `Pohlavi_pacienta` | VARCHAR | Patient biological sex | gender, sex |
-| `Zakladni_diagnoza` | VARCHAR | Primary diagnosis code | primary diagnosis, main diagnosis |
-| `Seznam_vedlejsich_diagnoz` | VARCHAR | Secondary/comorbid diagnosis codes (space-separated) | secondary diagnoses, comorbidities, additional diagnoses |
-| `DRG_skupina` | BIGINT | Diagnosis-Related Group classification | DRG code, DRG group |
-| `PSC` | VARCHAR | Postal code (Czech: poštovní směrovací číslo) | zip code, postal code |
-
-**Enumerated Values:**
-- `Vekovy_Interval_Pacienta`: `0-10`, `10-20`, `20-30`, `30-40`, `40-50`, `50-60`, `60-70`, `70-80`, `80+`
-- `Pohlavi_pacienta`: `F` (female), `M` (male)
-
----
-
-### Table: `FNHK.vykony`
-**Meaning:** Medical procedures and services performed during hospitalization.
-**Synonyms:** procedures, services, medical acts, interventions
-
-| Column Name | Type | Meaning | Synonyms |
-|---|---|---|---|
-| `Identifikace_pripadu` | BIGINT | Reference to case in pripady table | case ID |
-| `Datum_provedeni_vykonu` | DATE | Date procedure was performed | procedure date, service date |
-| `Typ_polozky` | BIGINT | Procedure type/category code | item type, procedure type |
-| `Kod_polozky` | BIGINT | Procedure code identifier | procedure code, service code |
-| `Pocet` | BIGINT | Quantity of procedures performed | count, number, quantity |
-| `Body` | BIGINT | Points/credits assigned to procedure | points, credits, score |
-
----
-
-### Table: `FNHK.zup`
-**Meaning:** Pharmaceutical and material supplies (Czech: zdravotnický a zdravotnický materiál) used during hospitalization.
-**Synonyms:** supplies, medications, materials, drugs, pharmaceuticals
-
-| Column Name | Type | Meaning | Synonyms |
-|---|---|---|---|
-| `Identifikace_pripadu` | BIGINT | Reference to case in pripady table | case ID |
-| `Datum_provedeni_vykonu` | DATE | Date supply was used/administered | supply date, usage date |
-| `Typ_polozky` | BIGINT | Supply type/category code | item type, supply type |
-| `Kod_polozky` | BIGINT | Supply code identifier | supply code, item code |
-| `Pocet` | DOUBLE | Quantity of supply used | count, amount, quantity |
-| `Cena` | DOUBLE | Unit price or total cost in Czech koruna (CZK) | price, cost, amount |
+This schema contains Czech healthcare hospitalization records with patient demographics, diagnoses, DRG classifications, and associated medical procedures and costs.
 
 ---
 
 ## Join Paths
 
-**vykony → pripady:**
+**Cases to procedures:**
 ```sql
-INNER JOIN FNHK.pripady p ON v.Identifikace_pripadu = p.Identifikace_pripadu
+FROM FNHK.pripady p
+JOIN FNHK.vykony v ON p.Identifikace_pripadu = v.Identifikace_pripadu
 ```
 
-**zup → pripady:**
+**Cases to supplies/materials:**
 ```sql
-INNER JOIN FNHK.pripady p ON z.Identifikace_pripadu = p.Identifikace_pripadu
+FROM FNHK.pripady p
+JOIN FNHK.zup z ON p.Identifikace_pripadu = z.Identifikace_pripadu
 ```
 
-**vykony ↔ zup (via pripady):**
+**All case data (procedures + supplies):**
 ```sql
-INNER JOIN FNHK.vykony v ON z.Identifikace_pripadu = v.Identifikace_pripadu
+FROM FNHK.pripady p
+LEFT JOIN FNHK.vykony v ON p.Identifikace_pripadu = v.Identifikace_pripadu
+LEFT JOIN FNHK.zup z ON p.Identifikace_pripadu = z.Identifikace_pripadu
 ```
+
+---
+
+## Table Reference
+
+### `FNHK.pripady`
+Hospitalization cases with patient and clinical classification.
+
+| Column | Semantics |
+|--------|-----------|
+| `Identifikace_pripadu` | Case identifier; foreign key to `vykony` and `zup` |
+| `Identifikator_pacienta` | Patient identifier (may appear in multiple cases) |
+| `Kod_zdravotni_pojistovny` | Health insurance provider code |
+| `Datum_prijeti` | Admission date |
+| `Datum_propusteni` | Discharge date |
+| `Delka_hospitalizace` | Length of stay in days |
+| `Vekovy_Interval_Pacienta` | Patient age bracket; enum: `0-10`, `10-20`, `20-30`, `30-40`, `40-50`, `50-60`, `60-70`, `70-80`, `80+` |
+| `Pohlavi_pacienta` | Patient sex; enum: `F` (female), `M` (male) |
+| `Zakladni_diagnoza` | Primary diagnosis code (ICD-10 format) |
+| `Seznam_vedlejsich_diagnoz` | Secondary diagnoses (space-separated ICD-10 codes) |
+| `DRG_skupina` | DRG (Diagnosis-Related Group) classification code |
+| `PSC` | Postal code (patient residence) |
+
+### `FNHK.vykony`
+Medical procedures and services performed during hospitalization.
+
+| Column | Semantics |
+|--------|-----------|
+| `Identifikace_pripadu` | Foreign key to `pripady` |
+| `Datum_provedeni_vykonu` | Procedure date |
+| `Typ_polozky` | Procedure type code (e.g., `0` for standard procedures) |
+| `Kod_polozky` | Procedure code identifier |
+| `Pocet` | Quantity of procedure performed |
+| `Body` | Points/credits assigned to procedure (reimbursement basis) |
+
+### `FNHK.zup`
+Supplies, materials, and drugs used during hospitalization.
+
+| Column | Semantics |
+|--------|-----------|
+| `Identifikace_pripadu` | Foreign key to `pripady` |
+| `Datum_provedeni_vykonu` | Supply/material date |
+| `Typ_polozky` | Supply type code (e.g., `1` for drugs, `3` for materials) |
+| `Kod_polozky` | Supply/material code identifier |
+| `Pocet` | Quantity (decimal; may represent units or weight) |
+| `Cena` | Unit or total price in CZK |
 
 ---
 
 ## Synonym Glossary
 
-| Common Term | Exact Schema Reference |
-|---|---|
-| patient age group | `pripady.Vekovy_Interval_Pacienta` |
-| patient sex/gender | `pripady.Pohlavi_pacienta` |
-| admission date | `pripady.Datum_prijeti` |
-| discharge date | `pripady.Datum_propusteni` |
-| length of stay | `pripady.Delka_hospitalizace` |
-| primary diagnosis | `pripady.Zakladni_diagnoza` |
-| secondary diagnoses | `pripady.Seznam_vedlejsich_diagnoz` |
-| DRG classification | `pripady.DRG_skupina` |
-| insurance provider | `pripady.Kod_zdravotni_pojistovny` |
-| procedure points/credits | `vykony.Body` |
-| procedure quantity | `vykony.Pocet` |
-| supply cost | `zup.Cena` |
-| supply quantity | `zup.Pocet` |
-| female patients | `WHERE pripady.Pohlavi_pacienta = 'F'` |
-| male patients | `WHERE pripady.Pohlavi_pacienta = 'M'` |
-| elderly patients (60+) | `WHERE pripady.Vekovy_Interval_Pacienta IN ('60-70', '70-80', '80+')` |
-| pediatric patients (0-10) | `WHERE pripady.Vekovy_Interval_Pacienta = '0-10'` |
+| Common Term | Schema Reference |
+|-------------|------------------|
+| hospitalization case | `FNHK.pripady.Identifikace_pripadu` |
+| admission | `FNHK.pripady.Datum_prijeti` |
+| discharge | `FNHK.pripady.Datum_propusteni` |
+| stay length | `FNHK.pripady.Delka_hospitalizace` |
+| primary diagnosis | `FNHK.pripady.Zakladni_diagnoza` |
+| comorbidities | `FNHK.pripady.Seznam_vedlejsich_diagnoz` |
+| DRG code | `FNHK.pripady.DRG_skupina` |
+| procedure | `FNHK.vykony` |
+| supply/material/drug | `FNHK.zup` |
+| insurance provider | `FNHK.pripady.Kod_zdravotni_pojistovny` |

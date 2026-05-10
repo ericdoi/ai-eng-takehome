@@ -1,376 +1,358 @@
 # Northwind Sales Database Reference Guide
 
 ## Schema Summary
-
-The `northwind` schema contains transactional sales data including customers, orders, products, employees, suppliers, and regional territories for a multi-national distribution business.
-
----
-
-## Table Reference
-
-### northwind.Categories
-**Meaning:** Product categories (e.g., Beverages, Seafood). Synonym: product lines, classifications.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `CategoryID` | BIGINT | Unique category identifier | category code |
-| `CategoryName` | VARCHAR | Category display name | category, type |
-| `Description` | VARCHAR | Category description text | details |
-| `Picture` | BLOB | Binary image data | image, photo |
-
-**Notable values:** Beverages, Condiments, Confections, Dairy Products, Grains/Cereals, Meat/Poultry, Produce, Seafood
-
----
-
-### northwind.Customers
-**Meaning:** Customer company records. Synonyms: accounts, clients, buyers.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `CustomerID` | VARCHAR | Unique customer identifier (5-char code) | customer code, account ID |
-| `CompanyName` | VARCHAR | Customer company legal name | company, account name |
-| `ContactName` | VARCHAR | Primary contact person name | contact, person |
-| `ContactTitle` | VARCHAR | Contact person's job title | title, role |
-| `Address` | VARCHAR | Street address | street, location |
-| `City` | VARCHAR | City name | municipality |
-| `Region` | VARCHAR | State/province code | state, province |
-| `PostalCode` | VARCHAR | Postal/ZIP code | zip, postal |
-| `Country` | VARCHAR | Country name | nation |
-| `Phone` | VARCHAR | Telephone number | phone, contact phone |
-| `Fax` | VARCHAR | Fax number | fax |
-
-**Notable values (ContactTitle):** Accounting Manager, Assistant Sales Agent, Marketing Manager, Owner, Sales Manager, Sales Representative
-
----
-
-### northwind.Employees
-**Meaning:** Employee staff records. Synonyms: staff, sales team, personnel.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `EmployeeID` | BIGINT | Unique employee identifier | employee code, staff ID |
-| `LastName` | VARCHAR | Employee surname | last name, family name |
-| `FirstName` | VARCHAR | Employee given name | first name, given name |
-| `Title` | VARCHAR | Job title | position, role |
-| `TitleOfCourtesy` | VARCHAR | Salutation (Mr., Mrs., Dr., Ms.) | courtesy, salutation |
-| `BirthDate` | TIMESTAMP | Date of birth | DOB, birth |
-| `HireDate` | TIMESTAMP | Employment start date | start date, hired |
-| `Address` | VARCHAR | Home street address | street |
-| `City` | VARCHAR | Home city | municipality |
-| `Region` | VARCHAR | Home state/province | state |
-| `PostalCode` | VARCHAR | Home postal code | zip |
-| `Country` | VARCHAR | Home country | nation |
-| `HomePhone` | VARCHAR | Home telephone | phone |
-| `Extension` | VARCHAR | Office phone extension | ext, extension |
-| `Photo` | BLOB | Employee photograph binary | image, picture |
-| `Notes` | VARCHAR | Employee biography/background | bio, background |
-| `ReportsTo` | BIGINT | Manager's EmployeeID (self-reference) | manager, supervisor |
-| `PhotoPath` | VARCHAR | URL path to employee photo | photo URL, image path |
-| `Salary` | DOUBLE | Annual compensation in currency units | compensation, pay |
-
-**Notable values (Title):** Inside Sales Coordinator, Sales Manager, Sales Representative, Vice President, Sales
-
----
-
-### northwind.EmployeeTerritories
-**Meaning:** Assignment of employees to sales territories (many-to-many). Synonyms: territory assignments, coverage.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `EmployeeID` | BIGINT | Employee identifier (FK to Employees) | employee |
-| `TerritoryID` | VARCHAR | Territory identifier (FK to Territories) | territory |
-
----
-
-### northwind.Orders
-**Meaning:** Sales orders placed by customers. Synonyms: transactions, sales orders, purchase orders.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `OrderID` | BIGINT | Unique order identifier | order number, order code |
-| `CustomerID` | VARCHAR | Customer identifier (FK to Customers) | customer |
-| `EmployeeID` | BIGINT | Salesperson identifier (FK to Employees) | salesperson, sales rep, employee |
-| `OrderDate` | TIMESTAMP | Date order was placed | order date, date placed |
-| `RequiredDate` | TIMESTAMP | Requested delivery date | due date, required by |
-| `ShippedDate` | TIMESTAMP | Actual shipment date | shipped, delivery date |
-| `ShipVia` | BIGINT | Shipper identifier (FK to Shippers) | shipper, carrier |
-| `Freight` | DOUBLE | Shipping cost in currency units | shipping, shipping cost |
-| `ShipName` | VARCHAR | Recipient company name | ship to, recipient |
-| `ShipAddress` | VARCHAR | Recipient street address | ship address |
-| `ShipCity` | VARCHAR | Recipient city | ship city |
-| `ShipRegion` | VARCHAR | Recipient state/province | ship region, ship state |
-| `ShipPostalCode` | VARCHAR | Recipient postal code | ship postal, ship zip |
-| `ShipCountry` | VARCHAR | Recipient country | ship country |
-
-**Notable values (ShipRegion):** AK, BC, CA, DF, ID, MT, NM, OR, WA, WY, and international codes
-
----
-
-### northwind.Order Details
-**Meaning:** Line items within orders (one order → many line items). Synonyms: order lines, line items, order items.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `OrderID` | BIGINT | Order identifier (FK to Orders) | order |
-| `ProductID` | BIGINT | Product identifier (FK to Products) | product |
-| `UnitPrice` | DOUBLE | Price per unit at time of order | price, unit price |
-| `Quantity` | BIGINT | Number of units ordered | qty, units |
-| `Discount` | DOUBLE | Discount as decimal (0.0–1.0, e.g., 0.15 = 15%) | discount rate, discount % |
-
----
-
-### northwind.Products
-**Meaning:** Product catalog. Synonyms: items, SKUs, merchandise.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ProductID` | BIGINT | Unique product identifier | product code, SKU |
-| `ProductName` | VARCHAR | Product display name | name, title |
-| `SupplierID` | BIGINT | Supplier identifier (FK to Suppliers) | supplier |
-| `CategoryID` | BIGINT | Category identifier (FK to Categories) | category |
-| `QuantityPerUnit` | VARCHAR | Packaging description (e.g., "10 boxes x 20 bags") | packaging, unit description |
-| `UnitPrice` | DOUBLE | Current list price in currency units | price, list price |
-| `UnitsInStock` | BIGINT | Current inventory quantity on hand | stock, inventory, on hand |
-| `UnitsOnOrder` | BIGINT | Quantity on pending purchase orders | on order, pending |
-| `ReorderLevel` | BIGINT | Minimum inventory threshold for reorder | reorder point, min stock |
-| `Discontinued` | BOOLEAN | Whether product is no longer sold | active, status |
-
----
-
-### northwind.Suppliers
-**Meaning:** Vendor/supplier company records. Synonyms: vendors, sources, manufacturers.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `SupplierID` | BIGINT | Unique supplier identifier | supplier code |
-| `CompanyName` | VARCHAR | Supplier company legal name | company, vendor name |
-| `ContactName` | VARCHAR | Primary contact person name | contact |
-| `ContactTitle` | VARCHAR | Contact person's job title | title, role |
-| `Address` | VARCHAR | Street address | street |
-| `City` | VARCHAR | City name | municipality |
-| `Region` | VARCHAR | State/province code | state, province |
-| `PostalCode` | VARCHAR | Postal code | zip |
-| `Country` | VARCHAR | Country name | nation |
-| `Phone` | VARCHAR | Telephone number | phone |
-| `Fax` | VARCHAR | Fax number | fax |
-| `HomePage` | VARCHAR | Website URL or HTML reference | website, URL |
-
----
-
-### northwind.Shippers
-**Meaning:** Shipping/logistics carrier companies. Synonyms: carriers, logistics providers.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ShipperID` | BIGINT | Unique shipper identifier | shipper code |
-| `CompanyName` | VARCHAR | Carrier company name | carrier, company |
-| `Phone` | VARCHAR | Contact telephone | phone |
-
-**Notable values (CompanyName):** Speedy Express, United Package, Federal Shipping
-
----
-
-### northwind.Territories
-**Meaning:** Geographic sales territories. Synonyms: regions, sales areas, zones.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `TerritoryID` | VARCHAR | Unique territory identifier (5-digit code) | territory code |
-| `TerritoryDescription` | VARCHAR | Territory name/description | territory name, description |
-| `RegionID` | BIGINT | Region identifier (FK to Region) | region |
-
----
-
-### northwind.Region
-**Meaning:** High-level geographic regions grouping territories. Synonyms: sales regions, divisions.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `RegionID` | BIGINT | Unique region identifier | region code |
-| `RegionDescription` | VARCHAR | Region name | region name |
-
-**Notable values (RegionDescription):** Eastern, Northern, Southern, Westerns
-
----
-
-### northwind.CustomerDemographics
-**Meaning:** Customer demographic classification types. Synonyms: customer types, segments.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `CustomerTypeID` | VARCHAR | Unique demographic type identifier | type code |
-| `CustomerDesc` | VARCHAR | Description of demographic type | description, type name |
-
----
-
-### northwind.CustomerCustomerDemo
-**Meaning:** Assignment of customers to demographic types (many-to-many). Synonyms: customer classifications, segment assignments.
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `CustomerID` | VARCHAR | Customer identifier (FK to Customers) | customer |
-| `CustomerTypeID` | VARCHAR | Demographic type identifier (FK to CustomerDemographics) | type |
-
----
-
-### View Tables (Read-Only)
-
-The following are pre-built views and should be queried as-is; they aggregate or filter base tables:
-
-- **northwind.Alphabetical list of products** — Products sorted alphabetically with category name
-- **northwind.Current Product List** — Active (non-discontinued) products
-- **northwind.Category Sales for 1997** — Total sales by category for 1997
-- **northwind.Product Sales for 1997** — Sales by product for 1997
-- **northwind.Order Details Extended** — Order line items with extended price
-- **northwind.Order Subtotals** — Order totals before freight
-- **northwind.Sales Totals by Amount** — Orders ranked by sale amount
-- **northwind.Sales by Category** — Sales breakdown by category
-- **northwind.Summary of Sales by Quarter** — Quarterly sales summary
-- **northwind.Summary of Sales by Year** — Annual sales summary
-- **northwind.Products Above Average Price** — Products priced above catalog average
-- **northwind.Products by Category** — Products grouped by category
-- **northwind.Customer and Suppliers by City** — Customers and suppliers co-located by city
-- **northwind.Quarterly Orders** — Orders grouped by quarter
-- **northwind.Orders Qry** — Orders with customer details joined
+Northwind is a transactional sales database tracking orders, products, customers, employees, and suppliers with historical sales views and category/regional aggregations.
 
 ---
 
 ## Join Paths
 
-### Orders → Customers
+**Orders → Customers:**
 ```sql
-Orders o
-INNER JOIN Customers c ON o.CustomerID = c.CustomerID
+FROM northwind.Orders o
+JOIN northwind.Customers c ON o.CustomerID = c.CustomerID
 ```
 
-### Orders → Employees
+**Orders → Order Details → Products:**
 ```sql
-Orders o
-INNER JOIN Employees e ON o.EmployeeID = e.EmployeeID
+FROM northwind.Orders o
+JOIN northwind."Order Details" od ON o.OrderID = od.OrderID
+JOIN northwind.Products p ON od.ProductID = p.ProductID
 ```
 
-### Orders → Shippers
+**Orders → Employees:**
 ```sql
-Orders o
-INNER JOIN Shippers s ON o.ShipVia = s.ShipperID
+FROM northwind.Orders o
+JOIN northwind.Employees e ON o.EmployeeID = e.EmployeeID
 ```
 
-### Order Details → Products
+**Employees → Territories:**
 ```sql
-"Order Details" od
-INNER JOIN Products p ON od.ProductID = p.ProductID
+FROM northwind.Employees e
+JOIN northwind.EmployeeTerritories et ON e.EmployeeID = et.EmployeeID
+JOIN northwind.Territories t ON et.TerritoryID = t.TerritoryID
 ```
 
-### Order Details → Orders
+**Products → Suppliers:**
 ```sql
-"Order Details" od
-INNER JOIN Orders o ON od.OrderID = o.OrderID
+FROM northwind.Products p
+JOIN northwind.Suppliers s ON p.SupplierID = s.SupplierID
 ```
 
-### Products → Categories
+**Products → Categories:**
 ```sql
-Products p
-INNER JOIN Categories c ON p.CategoryID = c.CategoryID
+FROM northwind.Products p
+JOIN northwind.Categories c ON p.CategoryID = c.CategoryID
 ```
 
-### Products → Suppliers
+**Orders → Shippers:**
 ```sql
-Products p
-INNER JOIN Suppliers s ON p.SupplierID = s.SupplierID
-```
-
-### Employees → Employees (Manager Hierarchy)
-```sql
-Employees e
-LEFT JOIN Employees m ON e.ReportsTo = m.EmployeeID
-```
-
-### Employees → Territories
-```sql
-Employees e
-INNER JOIN EmployeeTerritories et ON e.EmployeeID = et.EmployeeID
-INNER JOIN Territories t ON et.TerritoryID = t.TerritoryID
-```
-
-### Territories → Region
-```sql
-Territories t
-INNER JOIN Region r ON t.RegionID = r.RegionID
-```
-
-### Customers → Demographics
-```sql
-Customers c
-INNER JOIN CustomerCustomerDemo ccd ON c.CustomerID = ccd.CustomerID
-INNER JOIN CustomerDemographics cd ON ccd.CustomerTypeID = cd.CustomerTypeID
+FROM northwind.Orders o
+JOIN northwind.Shippers sh ON o.ShipVia = sh.ShipperID
 ```
 
 ---
 
 ## Business Rules as SQL
 
-### Revenue Recognition
-**Rule:** Revenue is recognized on the order date, NOT the ship date.
+**Rule: Revenue recognized on order date, not ship date**
 ```sql
-WHERE Orders.OrderDate IS NOT NULL
--- Use OrderDate for all revenue period assignment
+WHERE o.OrderDate IS NOT NULL
+-- Use OrderDate for all revenue metrics, ignore ShippedDate
 ```
 
-**Rule:** Orders with "Cancelled" status should be completely excluded from all revenue metrics.
+**Rule: Exclude cancelled orders from revenue**
 ```sql
--- Note: No explicit "Status" column exists in Orders table.
--- Cancelled orders may be identified by NULL ShippedDate + RequiredDate < CURRENT_DATE
--- Verify with business owner; currently no direct cancellation flag.
-WHERE Orders.ShippedDate IS NOT NULL OR Orders.OrderDate >= DATEADD(day, -30, CURRENT_DATE)
+-- Note: No "Status" column exists in Orders table; verify cancellation logic with business owner
 ```
 
-**Rule:** Partial shipments should be reported at full order value when order is placed, not when items ship.
+**Rule: Enterprise tier (lifetime > $50,000)**
 ```sql
--- Sum Order Details line items by OrderID; do not filter by ShippedDate
-SELECT 
-  od.OrderID,
-  SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS NetRevenue
-FROM "Order Details" od
-GROUP BY od.OrderID
+HAVING SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) > 50000
+```
+
+**Rule: Professional tier (lifetime $10,000–$50,000)**
+```sql
+HAVING SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) BETWEEN 10000 AND 50000
+```
+
+**Rule: Standard tier (all others with ≥1 completed order)**
+```sql
+HAVING SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) < 10000
+```
+
+**Rule: Exclude discontinued products from active catalog**
+```sql
+WHERE p.Discontinued = FALSE
+```
+
+**Rule: Exclude zero-price items from revenue (samples/promos)**
+```sql
+WHERE od.UnitPrice > 0
+```
+
+**Rule: Net revenue calculation**
+```sql
+SUM(od.Quantity * od.UnitPrice * (1 - od.Discount)) AS NetRevenue
+```
+
+**Rule: Gross revenue (before discount)**
+```sql
+SUM(od.Quantity * od.UnitPrice) AS GrossRevenue
+```
+
+**Rule: High-discount orders (>25%) flagged for compliance**
+```sql
+WHERE od.Discount > 0.25
+```
+
+**Rule: Fiscal quarters (calendar-aligned)**
+```sql
+WHERE QUARTER(o.OrderDate) = 1  -- Q1 = Jan–Mar
+```
+
+**Rule: Freeze period (Dec 20–31)**
+```sql
+WHERE MONTH(o.OrderDate) = 12 AND DAY(o.OrderDate) >= 20
 ```
 
 ---
 
-### Product Metrics
-**Rule:** Discontinued products should be excluded from "active catalog" counts but included in historical sales analysis.
-```sql
--- Active catalog:
-WHERE Products.Discontinued = FALSE
+## Synonym Glossary
 
--- Historical sales (include discontinued):
--- No WHERE clause on Discontinued
-```
-
-**Rule:** Products with unit price = $0 are samples or promotional items—track separately, not as revenue.
-```sql
--- Exclude from revenue:
-WHERE Products.UnitPrice > 0
-
--- Track separately:
-WHERE Products.UnitPrice = 0
-```
-
-**Rule:** Inventory value is calculated at cost, not at retail price—never mix these in reports.
-```sql
--- Use UnitPrice from Products table (list price) only for revenue.
--- Cost data not present in schema; flag for data model review.
-```
+| Business Term | Schema Reference |
+|---|---|
+| Revenue, Sales | `SUM(od.Quantity * od.UnitPrice * (1 - od.Discount))` from `northwind."Order Details"` |
+| Gross revenue | `SUM(od.Quantity * od.UnitPrice)` |
+| Order value | `od.Quantity * od.UnitPrice * (1 - od.Discount)` |
+| Discount rate | `od.Discount` (decimal 0.0–1.0, not percentage) |
+| Salesperson, Sales rep | `northwind.Employees` with `Title` containing "Sales" |
+| Territory | `northwind.Territories.TerritoryDescription` |
+| Shipper, Carrier | `northwind.Shippers.CompanyName` |
+| Supplier, Vendor | `northwind.Suppliers` |
+| Product line, Category | `northwind.Categories.CategoryName` |
+| Inventory on hand | `northwind.Products.UnitsInStock` |
+| Reorder point | `northwind.Products.ReorderLevel` |
+| Customer lifetime value | `SUM(od.Quantity * od.UnitPrice * (1 - od.Discount))` grouped by `CustomerID` |
+| Active products | `WHERE northwind.Products.Discontinued = FALSE` |
+| Discontinued products | `WHERE northwind.Products.Discontinued = TRUE` |
 
 ---
 
-### Customer Segmentation
-**Rule:** Customers with lifetime purchases > $50,000 are "Enterprise" tier.
-```sql
-HAVING SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) > 50000
--- Tier = 'Enterprise'
-```
+## Table Reference
 
-**Rule:** Customers with lifetime purchases > $10,000 but < $50,000 are "Professional" tier.
-```sql
-HAVING SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) > 10000
-  AND SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) <= 50
+### `northwind.Orders`
+**Meaning:** Order header records; one row per order placed.  
+**Synonyms:** Sales orders, transactions.
+
+| Column | Notes |
+|---|---|
+| `OrderID` | Primary key. |
+| `CustomerID` | Foreign key to `northwind.Customers`. |
+| `EmployeeID` | Foreign key to `northwind.Employees`; employee assigned at order time (not current). |
+| `OrderDate` | **Revenue recognition date** (not `ShippedDate`). |
+| `RequiredDate` | Requested delivery date. |
+| `ShippedDate` | Actual ship date; may be NULL if not yet shipped. |
+| `ShipVia` | Foreign key to `northwind.Shippers.ShipperID`. |
+| `Freight` | Shipping cost (DOUBLE). |
+| `ShipName`, `ShipAddress`, `ShipCity`, `ShipRegion`, `ShipPostalCode`, `ShipCountry` | Delivery address; may differ from customer address. |
+
+---
+
+### `northwind."Order Details"`
+**Meaning:** Line items within orders; one row per product per order.  
+**Synonyms:** Order lines, line items.
+
+| Column | Notes |
+|---|---|
+| `OrderID` | Foreign key to `northwind.Orders`. |
+| `ProductID` | Foreign key to `northwind.Products`. |
+| `UnitPrice` | Price at time of order (DOUBLE); may differ from current `northwind.Products.UnitPrice`. |
+| `Quantity` | Units ordered (BIGINT). |
+| `Discount` | Decimal 0.0–1.0 (e.g., 0.15 = 15% off); **not a dollar amount**. Orders with `Discount > 0.25` require compliance review. |
+
+---
+
+### `northwind.Customers`
+**Meaning:** Customer master; one row per customer account.  
+**Synonyms:** Accounts, clients.
+
+| Column | Notes |
+|---|---|
+| `CustomerID` | Primary key (VARCHAR). |
+| `CompanyName` | Customer organization name. |
+| `ContactName`, `ContactTitle` | Primary contact. `ContactTitle` values: Accounting Manager, Assistant Sales Agent, Marketing Manager, Owner, Sales Representative, etc. |
+| `Address`, `City`, `Region`, `PostalCode`, `Country` | Billing/primary address. |
+| `Phone`, `Fax` | Contact numbers. |
+
+---
+
+### `northwind.Products`
+**Meaning:** Product catalog; one row per SKU.  
+**Synonyms:** Items, SKUs.
+
+| Column | Notes |
+|---|---|
+| `ProductID` | Primary key. |
+| `ProductName` | Product description. |
+| `SupplierID` | Foreign key to `northwind.Suppliers`. |
+| `CategoryID` | Foreign key to `northwind.Categories`. |
+| `QuantityPerUnit` | Packaging description (e.g., "10 boxes x 20 bags"). |
+| `UnitPrice` | Current list price (DOUBLE). **Do not use for historical revenue**; use `northwind."Order Details".UnitPrice` instead. |
+| `UnitsInStock` | Current inventory quantity. |
+| `UnitsOnOrder` | Quantity on pending purchase orders. |
+| `ReorderLevel` | Minimum stock threshold. |
+| `Discontinued` | BOOLEAN; `TRUE` = no longer sold. Exclude from active catalog counts; include in historical analysis. |
+
+---
+
+### `northwind.Employees`
+**Meaning:** Employee roster; one row per employee.  
+**Synonyms:** Staff, sales team.
+
+| Column | Notes |
+|---|---|
+| `EmployeeID` | Primary key. |
+| `LastName`, `FirstName` | Employee name. |
+| `Title` | Job title. Values: Sales Representative, Sales Manager, Vice President Sales, Inside Sales Coordinator. |
+| `TitleOfCourtesy` | Salutation (Mr., Mrs., Ms., Dr.). |
+| `BirthDate`, `HireDate` | TIMESTAMP. |
+| `Address`, `City`, `Region`, `PostalCode`, `Country` | Home address. |
+| `HomePhone`, `Extension` | Contact. |
+| `ReportsTo` | Foreign key to `northwind.Employees` (manager's EmployeeID); NULL for top-level. |
+| `Salary` | DOUBLE. |
+
+---
+
+### `northwind.Categories`
+**Meaning:** Product category master.  
+**Synonyms:** Product lines, segments.
+
+| Column | Notes |
+|---|---|
+| `CategoryID` | Primary key. |
+| `CategoryName` | Exact values: Beverages, Condiments, Confections, Dairy Products, Grains/Cereals, Meat/Poultry, Produce, Seafood. |
+| `Description` | Category description. |
+
+---
+
+### `northwind.Suppliers`
+**Meaning:** Supplier/vendor master.  
+**Synonyms:** Vendors.
+
+| Column | Notes |
+|---|---|
+| `SupplierID` | Primary key. |
+| `CompanyName` | Supplier organization. |
+| `ContactName`, `ContactTitle` | Primary contact and role. |
+| `Address`, `City`, `Region`, `PostalCode`, `Country` | Supplier location. |
+| `Phone`, `Fax` | Contact numbers. |
+| `HomePage` | URL or reference (may contain markup). |
+
+---
+
+### `northwind.Shippers`
+**Meaning:** Shipping carrier master.  
+**Synonyms:** Carriers, logistics providers.
+
+| Column | Notes |
+|---|---|
+| `ShipperID` | Primary key. |
+| `CompanyName` | Exact values: Speedy Express, United Package, Federal Shipping. |
+| `Phone` | Carrier contact. |
+
+---
+
+### `northwind.Territories`
+**Meaning:** Sales territory definitions.  
+**Synonyms:** Sales regions, zones.
+
+| Column | Notes |
+|---|---|
+| `TerritoryID` | Primary key (VARCHAR, e.g., "01581"). |
+| `TerritoryDescription` | Territory name (e.g., "Westboro"). |
+| `RegionID` | Foreign key to `northwind.Region`. |
+
+---
+
+### `northwind.EmployeeTerritories`
+**Meaning:** Many-to-many mapping of employees to territories.
+
+| Column | Notes |
+|---|---|
+| `EmployeeID` | Foreign key to `northwind.Employees`. |
+| `TerritoryID` | Foreign key to `northwind.Territories`. |
+
+---
+
+### `northwind.Region`
+**Meaning:** High-level regional groupings.
+
+| Column | Notes |
+|---|---|
+| `RegionID` | Primary key. |
+| `RegionDescription` | Exact values: Eastern, Northern, Southern, Westerns. |
+
+---
+
+### `northwind.CustomerDemographics`
+**Meaning:** Customer demographic type definitions.
+
+| Column | Notes |
+|---|---|
+| `CustomerTypeID` | Primary key (VARCHAR). |
+| `CustomerDesc` | Demographic description. |
+
+---
+
+### `northwind.CustomerCustomerDemo`
+**Meaning:** Many-to-many mapping of customers to demographic types.
+
+| Column | Notes |
+|---|---|
+| `CustomerID` | Foreign key to `northwind.Customers`. |
+| `CustomerTypeID` | Foreign key to `northwind.CustomerDemographics`. |
+
+---
+
+### View Tables (Read-Only Aggregations)
+
+**`northwind.Invoices`**  
+Denormalized invoice view combining Orders, Order Details, Products, Customers, Employees, Shippers. Use for reporting; do not join with base tables to avoid duplication.
+
+**`northwind."Order Details Extended"`**  
+Order Details with product name and extended price pre-calculated.
+
+**`northwind."Order Subtotals"`**  
+Order-level subtotals (before freight).
+
+**`northwind."Category Sales for 1997"`**  
+Aggregated sales by category for 1997 only.
+
+**`northwind."Product Sales for 1997"`**  
+Aggregated sales by product for 1997 only.
+
+**`northwind."Sales by Category"`**  
+Product-level sales by category.
+
+**`northwind."Sales Totals by Amount"`**  
+Orders ranked/grouped by sale amount.
+
+**`northwind."Summary of Sales by Quarter"`, `northwind."Summary of Sales by Year"`**  
+Time-series aggregations by ship date.
+
+**`northwind."Alphabetical list of products"`, `northwind."Current Product List"`, `northwind."Products Above Average Price"`, `northwind."Products by Category"`**  
+Filtered/sorted product views.
+
+**`northwind."Customer and Suppliers by City"`, `northwind."Quarterly Orders"`**  
+Denormalized customer/supplier views.
+
+---
+
+## Notes
+
+- **No cancellation status column:** Verify with business owner how cancelled orders are identified (if at all).
+- **Discount is decimal, not percentage:** Always multiply by 100 for display or compare to 0.25 (not 25).
+- **Historical pricing:** Always use `northwind."Order Details".UnitPrice`, never current `northwind.Products.UnitPrice`, for revenue calculations.
+- **Employee attribution:** Use `northwind.Orders.EmployeeID` at order time; do not use current employee assignment.
+- **Freeze period:** December 20–31 orders may inflate period-end metrics; flag separately in reports.

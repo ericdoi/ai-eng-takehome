@@ -1,184 +1,220 @@
 # Atherosclerosis Schema Reference Guide
 
 ## Schema Summary
-This schema contains longitudinal cardiovascular health data for a cohort study, tracking participant demographics, clinical measurements, diagnoses, medications, and mortality outcomes across multiple follow-up visits from the 1970s–1990s.
+Longitudinal cardiovascular disease study tracking control subjects with baseline entry data, periodic follow-up measurements, clinical events, and mortality outcomes.
+
+---
+
+## Join Paths
+
+**All subjects with their entry baseline and follow-up measurements:**
+```sql
+FROM Atherosclerosis.Entry e
+LEFT JOIN Atherosclerosis.Contr c ON e.ICO = c.ICO
+```
+
+**All subjects with mortality data:**
+```sql
+FROM Atherosclerosis.Entry e
+LEFT JOIN Atherosclerosis.Death d ON e.ICO = d.ICO
+```
+
+**All subjects with clinical letter records:**
+```sql
+FROM Atherosclerosis.Entry e
+LEFT JOIN Atherosclerosis.Letter l ON e.ICO = l.ICO
+```
+
+**Complete subject history (entry + follow-up + death + letters):**
+```sql
+FROM Atherosclerosis.Entry e
+LEFT JOIN Atherosclerosis.Contr c ON e.ICO = c.ICO
+LEFT JOIN Atherosclerosis.Death d ON e.ICO = d.ICO
+LEFT JOIN Atherosclerosis.Letter l ON e.ICO = l.ICO
+```
+
+---
+
+## Synonym Glossary
+
+| Term | Schema Reference |
+|------|------------------|
+| subject ID | `ICO` |
+| baseline visit | `Atherosclerosis.Entry` |
+| follow-up visit | `Atherosclerosis.Contr` |
+| death date | `Atherosclerosis.Death.ROKUMR`, `MESUMR` |
+| cholesterol level | `CHLST` (mmol/L) or `CHLSTMG` (mg/dL) |
+| triglycerides | `TRIGL` (mmol/L) or `TRIGLMG` (mg/dL) |
+| systolic/diastolic BP | `SYST`/`DIAST` or `SYST1`/`DIAST1` |
+| BMI proxy | weight (`HMOT`, `VAHA`) and height (`VYSKA`) |
+| smoking status | `KOURENI`, `KURAK` |
+| diabetes | `DIABET`, `DIAB` |
+| hypertension | `HT`, `HYPERT` |
+| myocardial infarction | `IM` |
+| stroke/ICT | `ICT` |
+| chest pain | `BOLHR` |
+| dyspnea | `DUSNOST`, `DUSN` |
 
 ---
 
 ## Table Reference
 
-### Table: `Atherosclerosis.Contr`
-**Meaning:** Control/follow-up visit records; repeated measurements and clinical assessments for study participants.
-**Synonyms:** Follow-up visit, Control visit, Measurement record
+### `Atherosclerosis.Entry` (64 columns)
+**Baseline enrollment visit data for all subjects.**
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ICO` | BIGINT | Participant identifier | Subject ID, Patient ID |
-| `ROKVYS` | BIGINT | Year of visit | Visit year |
-| `MESVYS` | BIGINT | Month of visit | Visit month |
-| `PORADK` | BIGINT | Visit sequence number | Visit order, Visit number |
-| `ZMCHARZA` | BIGINT | Change in behavior/lifestyle (coded) | Behavior change |
-| `ZMTELAKT` | BIGINT | Change in physical activity (coded) | Activity change |
-| `AKTPOZAM` | BIGINT | Physical activity level (coded) | Activity level |
-| `ZMDIET` | BIGINT | Change in diet (coded) | Diet change |
-| `LEKCHOL` | VARCHAR | Cholesterol medication use | Cholesterol drug; Values: 70, 71, 72, 73, 75 |
-| `LEKTLAK` | BIGINT | Blood pressure medication use (coded) | BP medication |
-| `ZMKOUR` | BIGINT | Change in smoking (coded) | Smoking change |
-| `POCCIG` | BIGINT | Number of cigarettes per day | Daily cigarettes |
-| `PRACNES` | BIGINT | Work-related stress (coded) | Occupational stress |
-| `SRDCE` | VARCHAR | Heart disease status | Cardiac status; Values: 2, 3, 4 |
-| `HYPERT` | VARCHAR | Hypertension status | High blood pressure; Values: 2 |
-| `CEVMOZ` | VARCHAR | Cerebrovascular disease status | Stroke/brain vessel disease; Values: 2, 3, 5 |
-| `DIAB` | VARCHAR | Diabetes status | Diabetes; Values: 2, 3 |
-| `JINAONE` | BIGINT | Other disease (coded) | Other condition |
-| `BOLHR` | BIGINT | Chest pain presence (coded) | Angina, Chest pain |
-| `BOLDK` | BIGINT | Back pain presence (coded) | Back pain |
-| `DUSN` | BIGINT | Dyspnea/shortness of breath (coded) | Breathlessness |
-| `HODNSK` | BIGINT | Baseline measurement value | Initial value |
-| `HODN0` | BIGINT | Measurement 0 value | Measurement at time 0 |
-| `ROK0` | BIGINT | Year of measurement 0 | Year at time 0 |
-| `HODN1` | VARCHAR | Measurement 1 value | Values: 1 |
-| `ROK1` | VARCHAR | Year of measurement 1 | |
-| `HODN2` | VARCHAR | Measurement 2 value | Values: 2 |
-| `ROK2` | VARCHAR | Year of measurement 2 | |
-| `HODN3` | VARCHAR | Measurement 3 value | Values: 3 |
-| `ROK3` | VARCHAR | Year of measurement 3 | Values: 77–98 |
-| `HODN4` | VARCHAR | Measurement 4 value | Values: 4 |
-| `ROK4` | VARCHAR | Year of measurement 4 | Values: 78–98 |
-| `HODN11` | VARCHAR | Measurement 11 value | Values: 11 |
-| `ROK11` | VARCHAR | Year of measurement 11 | Values: 80–99 |
-| `HODN12` | VARCHAR | Measurement 12 value | Values: 12 |
-| `ROK12` | VARCHAR | Year of measurement 12 | Values: 77–97 |
-| `HODN13` | VARCHAR | Measurement 13 value | Values: 13 |
-| `ROK13` | VARCHAR | Year of measurement 13 | Values: 79–99 |
-| `HODN14` | VARCHAR | Measurement 14 value | Values: 14 |
-| `ROK14` | VARCHAR | Year of measurement 14 | Values: 79, 91, 96 |
-| `HODN15` | VARCHAR | Measurement 15 value | Values: 15 |
-| `ROK15` | VARCHAR | Year of measurement 15 | Values: 87–98 |
-| `HODN21` | VARCHAR | Measurement 21 value | Values: 21 |
-| `ROK21` | VARCHAR | Year of measurement 21 | Values: 90, 94, 96 |
-| `HODN23` | VARCHAR | Measurement 23 value | Values: 23 |
-| `ROK23` | VARCHAR | Year of measurement 23 | Values: 97 |
-| `HMOT` | BIGINT | Body weight (kg) | Weight |
-| `SYST` | BIGINT | Systolic blood pressure (mmHg) | Systolic BP |
-| `DIAST` | BIGINT | Diastolic blood pressure (mmHg) | Diastolic BP |
-| `TRIC` | BIGINT | Triceps skinfold (mm) | Triceps fold |
-| `SUBSC` | BIGINT | Subscapular skinfold (mm) | Subscapular fold |
-| `HYPERSD` | BIGINT | Systolic hypertension indicator (coded) | Systolic HTN |
-| `HYPERS` | BIGINT | Systolic hypertension severity (coded) | Systolic HTN severity |
-| `HYPERD` | BIGINT | Diastolic hypertension indicator (coded) | Diastolic HTN |
-| `HYPCHL` | BIGINT | Hypercholesterolemia indicator (coded) | High cholesterol |
-| `HYPTGL` | BIGINT | Hypertriglyceridemia indicator (coded) | High triglycerides |
-| `CHLST` | DOUBLE | Total cholesterol (mmol/L) | Cholesterol |
-| `CHLSTMG` | BIGINT | Total cholesterol (mg/dL) | Cholesterol (mg/dL) |
-| `TRIGL` | DOUBLE | Triglycerides (mmol/L) | Triglycerides |
-| `TRIGLMG` | BIGINT | Triglycerides (mg/dL) | Triglycerides (mg/dL) |
-| `HDL` | VARCHAR | HDL cholesterol (mmol/L) | HDL |
-| `HDLMG` | VARCHAR | HDL cholesterol (mg/dL) | HDL (mg/dL) |
-| `MOC` | BIGINT | Urine output/kidney function (coded) | Urine, Kidney function |
-| `GLYKEMIE` | VARCHAR | Blood glucose/glycemia (coded) | Blood sugar, Glucose |
-| `KYSMOC` | VARCHAR | Urine ketones (coded) | Ketones |
-| `LDL` | VARCHAR | LDL cholesterol (mmol/L) | LDL |
+| Column | Type | Notes |
+|--------|------|-------|
+| `ICO` | BIGINT | Subject identifier (primary key) |
+| `ROKNAR` | BIGINT | Birth year |
+| `ROKVSTUP` | BIGINT | Enrollment year |
+| `MESVSTUP` | BIGINT | Enrollment month |
+| `VZDELANI` | BIGINT | Education level |
+| `KOURENI` | BIGINT | Smoking status at baseline |
+| `DOBAKOUR` | VARCHAR | Duration of smoking; values: `10, 7, 8, 9` |
+| `BYVKURAK` | VARCHAR | Former smoker; values: `11, 12` |
+| `ALKOHOL` | BIGINT | Alcohol consumption |
+| `IM` | BIGINT | History of myocardial infarction |
+| `IML` | VARCHAR | MI laterality; values: `4, 5, 6` |
+| `HT` | BIGINT | Hypertension diagnosis |
+| `HTD` | VARCHAR | HTN drug treatment; values: `3, 6` |
+| `HTL` | VARCHAR | HTN drug type; values: `4, 5, 6` |
+| `ICT` | BIGINT | Ischemic stroke/TIA |
+| `ICTL` | VARCHAR | ICT laterality; values: `6` |
+| `DIABET` | BIGINT | Diabetes diagnosis |
+| `DIABD` | BIGINT | Diabetes drug treatment |
+| `DIABL` | BIGINT | Diabetes drug type |
+| `HYPLIP` | BIGINT | Hyperlipidemia diagnosis |
+| `HYPLD` | VARCHAR | Hyperlipidemia drug treatment; values: `3, 6` |
+| `HYPLL` | VARCHAR | Hyperlipidemia drug type; values: `4, 5, 6` |
+| `IMTRV` | VARCHAR | Years since MI; values: `0, 1, 10, 11, 13, 14, 16, 2, 3, 4, 5, 6, 7, 8, 9` |
+| `HTTRV` | VARCHAR | Years since HTN diagnosis |
+| `ICTTRV` | VARCHAR | Years since ICT; values: `1, 6` |
+| `DIABTRV` | BIGINT | Years since diabetes diagnosis |
+| `HYPLTRV` | VARCHAR | Years since hyperlipidemia; values: `0, 1, 11, 2, 3, 4, 5, 6, 7, 8, 9` |
+| `BOLHR` | BIGINT | Chest pain (angina) |
+| `BOLDK` | BIGINT | Back pain |
+| `DUSNOST` | BIGINT | Dyspnea |
+| `VYSKA` | BIGINT | Height (cm) |
+| `VAHA` | BIGINT | Weight (kg) |
+| `SYST1` | BIGINT | Systolic BP (mmHg) |
+| `DIAST1` | BIGINT | Diastolic BP (mmHg) |
+| `SYST2` | VARCHAR | Second systolic BP reading |
+| `DIAST2` | VARCHAR | Second diastolic BP reading |
+| `TRIC` | BIGINT | Triceps skinfold (mm) |
+| `SUBSC` | BIGINT | Subscapular skinfold (mm) |
+| `CHLST` | BIGINT | Total cholesterol (mmol/L) |
+| `TRIGL` | BIGINT | Triglycerides (mmol/L) |
+| `MOC` | BIGINT | Urine glucose |
+| `RARISK` | BIGINT | Race/ethnicity risk category |
+| `OBEZRISK` | BIGINT | Obesity risk category |
+| `KOURRISK` | BIGINT | Smoking risk category |
+| `HTRISK` | BIGINT | Hypertension risk category |
+| `CHOLRISK` | BIGINT | Cholesterol risk category |
 
 ---
 
-### Table: `Atherosclerosis.Death`
-**Meaning:** Mortality records; date and cause of death for deceased participants.
-**Synonyms:** Mortality, Outcome, Death record
+### `Atherosclerosis.Contr` (66 columns)
+**Periodic follow-up measurements (multiple visits per subject).**
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ICO` | BIGINT | Participant identifier | Subject ID, Patient ID |
-| `DENUMR` | VARCHAR | Day of death | Death day |
-| `MESUMR` | VARCHAR | Month of death | Death month; Values: 1–12 |
-| `ROKUMR` | BIGINT | Year of death | Death year |
-| `PRICUMR` | BIGINT | Cause of death (coded) | Death cause, ICD code |
-
----
-
-### Table: `Atherosclerosis.Entry`
-**Meaning:** Baseline/enrollment visit records; initial demographic, lifestyle, and clinical data at study entry.
-**Synonyms:** Baseline, Enrollment, Initial visit, Intake
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ICO` | BIGINT | Participant identifier | Subject ID, Patient ID |
-| `KONSKUP` | BIGINT | Cohort/group assignment (coded) | Group, Cohort |
-| `ROKNAR` | BIGINT | Year of birth | Birth year |
-| `ROKVSTUP` | BIGINT | Year of enrollment | Enrollment year |
-| `MESVSTUP` | BIGINT | Month of enrollment | Enrollment month |
-| `STAV` | BIGINT | Marital status (coded) | Marital status |
-| `VZDELANI` | BIGINT | Education level (coded) | Education |
-| `ZODPOV` | BIGINT | Occupational responsibility level (coded) | Job responsibility |
-| `TELAKTZA` | BIGINT | Physical activity at work (coded) | Work activity |
-| `AKTPOZAM` | BIGINT | Physical activity in leisure (coded) | Leisure activity |
-| `DOPRAVA` | BIGINT | Mode of transportation (coded) | Transport |
-| `DOPRATRV` | BIGINT | Transportation duration (coded) | Transport time |
-| `KOURENI` | BIGINT | Smoking status (coded) | Smoking |
-| `DOBAKOUR` | VARCHAR | Duration of smoking (coded) | Smoking duration; Values: 7, 8, 9, 10 |
-| `BYVKURAK` | VARCHAR | Former smoker status (coded) | Ex-smoker; Values: 11, 12 |
-| `ALKOHOL` | BIGINT | Alcohol consumption (coded) | Alcohol use |
-| `PIVO7` | VARCHAR | Beer consumption frequency (coded) | Beer; Values: 8 |
-| `PIVO10` | BIGINT | Beer consumption quantity (coded) | Beer amount |
-| `PIVO12` | VARCHAR | Beer consumption pattern (coded) | Beer pattern; Values: 10 |
-| `VINO` | BIGINT | Wine consumption (coded) | Wine |
-| `LIHOV` | BIGINT | Spirits consumption (coded) | Liquor, Hard liquor |
-| `PIVOMN` | BIGINT | Beer consumption (monthly) | Monthly beer |
-| `VINOMN` | BIGINT | Wine consumption (monthly) | Monthly wine |
-| `LIHMN` | BIGINT | Spirits consumption (monthly) | Monthly spirits |
-| `KAVA` | BIGINT | Coffee consumption (coded) | Coffee |
-| `CAJ` | BIGINT | Tea consumption (coded) | Tea |
-| `CUKR` | BIGINT | Sugar consumption (coded) | Sugar |
-| `IM` | BIGINT | Myocardial infarction history (coded) | MI, Heart attack |
-| `IML` | VARCHAR | MI onset age (coded) | MI age; Values: 4, 5, 6 |
-| `HT` | BIGINT | Hypertension history (coded) | High blood pressure history |
-| `HTD` | VARCHAR | Hypertension diagnosis age (coded) | HTN age; Values: 3, 6 |
-| `HTL` | VARCHAR | Hypertension treatment duration (coded) | HTN treatment; Values: 4, 5, 6 |
-| `ICT` | BIGINT | Ischemic stroke history (coded) | Stroke history |
-| `ICTL` | VARCHAR | Stroke onset age (coded) | Stroke age; Values: 6 |
-| `DIABET` | BIGINT | Diabetes history (coded) | Diabetes |
-| `DIABD` | BIGINT | Diabetes diagnosis age (coded) | Diabetes age |
-| `DIABL` | BIGINT | Diabetes treatment duration (coded) | Diabetes treatment |
-| `HYPLIP` | BIGINT | Hyperlipidemia history (coded) | High lipids history |
-| `HYPLD` | VARCHAR | Hyperlipidemia diagnosis age (coded) | Hyperlipidemia age; Values: 3, 6 |
-| `HYPLL` | VARCHAR | Hyperlipidemia treatment duration (coded) | Hyperlipidemia treatment; Values: 4, 5, 6 |
-| `IMTRV` | VARCHAR | MI treatment duration (coded) | MI treatment; Values: 0–16 |
-| `HTTRV` | VARCHAR | Hypertension treatment duration (coded) | HTN treatment duration |
-| `ICTTRV` | VARCHAR | Stroke treatment duration (coded) | Stroke treatment; Values: 1, 6 |
-| `DIABTRV` | BIGINT | Diabetes treatment duration (coded) | Diabetes treatment duration |
-| `HYPLTRV` | VARCHAR | Hyperlipidemia treatment duration (coded) | Hyperlipidemia treatment duration; Values: 0–9, 11 |
-| `BOLHR` | BIGINT | Chest pain presence (coded) | Angina, Chest pain |
-| `BOLDK` | BIGINT | Back pain presence (coded) | Back pain |
-| `DUSNOST` | BIGINT | Dyspnea presence (coded) | Shortness of breath |
-| `VYSKA` | BIGINT | Height (cm) | Height |
-| `VAHA` | BIGINT | Body weight (kg) | Weight |
-| `SYST1` | BIGINT | Systolic BP, measurement 1 (mmHg) | Systolic BP 1 |
-| `DIAST1` | BIGINT | Diastolic BP, measurement 1 (mmHg) | Diastolic BP 1 |
-| `SYST2` | VARCHAR | Systolic BP, measurement 2 (mmHg) | Systolic BP 2 |
-| `DIAST2` | VARCHAR | Diastolic BP, measurement 2 (mmHg) | Diastolic BP 2 |
-| `TRIC` | BIGINT | Triceps skinfold (mm) | Triceps fold |
-| `SUBSC` | BIGINT | Subscapular skinfold (mm) | Subscapular fold |
-| `CHLST` | BIGINT | Total cholesterol (mg/dL) | Cholesterol |
-| `TRIGL` | BIGINT | Triglycerides (mg/dL) | Triglycerides |
-| `MOC` | BIGINT | Urine output/kidney function (coded) | Urine, Kidney function |
-| `RARISK` | BIGINT | Race/ethnicity risk indicator (coded) | Race risk |
-| `OBEZRISK` | BIGINT | Obesity risk indicator (coded) | Obesity risk |
-| `KOURRISK` | BIGINT | Smoking risk indicator (coded) | Smoking risk |
-| `HTRISK` | BIGINT | Hypertension risk indicator (coded) | HTN risk |
-| `CHOLRISK` | BIGINT | Cholesterol risk indicator (coded) | Cholesterol risk |
+| Column | Type | Notes |
+|--------|------|-------|
+| `ICO` | BIGINT | Subject identifier |
+| `ROKVYS` | BIGINT | Follow-up year |
+| `MESVYS` | BIGINT | Follow-up month |
+| `PORADK` | BIGINT | Visit sequence number |
+| `ZMCHARZA` | BIGINT | Behavior change indicator |
+| `ZMTELAKT` | BIGINT | Physical activity change |
+| `AKTPOZAM` | BIGINT | Physical activity level |
+| `ZMDIET` | BIGINT | Diet change |
+| `LEKCHOL` | VARCHAR | Cholesterol medication; values: `70, 71, 72, 73, 75` |
+| `LEKTLAK` | BIGINT | Blood pressure medication |
+| `ZMKOUR` | BIGINT | Smoking change |
+| `POCCIG` | BIGINT | Cigarettes per day |
+| `PRACNES` | BIGINT | Work-related stress |
+| `SRDCE` | VARCHAR | Cardiac symptoms; values: `2, 3, 4` |
+| `HYPERT` | VARCHAR | Hypertension status; values: `2` |
+| `CEVMOZ` | VARCHAR | Cerebrovascular symptoms; values: `2, 3, 5` |
+| `DIAB` | VARCHAR | Diabetes status; values: `2, 3` |
+| `JINAONE` | BIGINT | Other disease |
+| `BOLHR` | BIGINT | Chest pain |
+| `BOLDK` | BIGINT | Back pain |
+| `DUSN` | BIGINT | Dyspnea |
+| `HODN0`–`HODN23` | VARCHAR | Disease codes at various timepoints; values: `1, 2, 3, 4, 11, 12, 13, 14, 15, 21, 23` |
+| `ROK0`–`ROK23` | VARCHAR/BIGINT | Year of disease code; values: `77–99` (two-digit years) |
+| `HMOT` | BIGINT | Weight (kg) |
+| `SYST` | BIGINT | Systolic BP (mmHg) |
+| `DIAST` | BIGINT | Diastolic BP (mmHg) |
+| `TRIC` | BIGINT | Triceps skinfold (mm) |
+| `SUBSC` | BIGINT | Subscapular skinfold (mm) |
+| `HYPERSD` | BIGINT | Systolic hypertension indicator |
+| `HYPERS` | BIGINT | Systolic BP category |
+| `HYPERD` | BIGINT | Diastolic hypertension indicator |
+| `HYPCHL` | BIGINT | Hypercholesterolemia indicator |
+| `HYPTGL` | BIGINT | Hypertriglyceridemia indicator |
+| `CHLST` | DOUBLE | Total cholesterol (mmol/L) |
+| `CHLSTMG` | BIGINT | Total cholesterol (mg/dL) |
+| `TRIGL` | DOUBLE | Triglycerides (mmol/L) |
+| `TRIGLMG` | BIGINT | Triglycerides (mg/dL) |
+| `HDL` | VARCHAR | HDL cholesterol (mmol/L) |
+| `HDLMG` | VARCHAR | HDL cholesterol (mg/dL) |
+| `MOC` | BIGINT | Urine glucose |
+| `GLYKEMIE` | VARCHAR | Blood glucose |
+| `KYSMOC` | VARCHAR | Urine ketones |
+| `LDL` | VARCHAR | LDL cholesterol (mmol/L) |
 
 ---
 
-### Table: `Atherosclerosis.Letter`
-**Meaning:** Follow-up letter/questionnaire records; clinical status updates, medication use, and lifestyle data collected via correspondence.
-**Synonyms:** Follow-up questionnaire, Letter response, Correspondence record
+### `Atherosclerosis.Death` (5 columns)
+**Mortality records for deceased subjects.**
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `ICO` | BIGINT | Participant identifier | Subject ID, Patient ID |
-| `MESDOT` | VARCHAR | Month of letter/questionnaire | Letter month; Values: 1–12 |
-| `ROKDOT` | BIGINT | Year of letter/questionnaire | Letter year |
-| `LEKCHOL` | BIGINT | Cholesterol medication use (coded) | Cholesterol drug |
-| `LEKTK` | BIGINT | Blood pressure medication use (coded) | BP medication |
-| `NEMOC1` | BIGINT | Primary disease diagnosis (coded) | Primary diagnosis |
-| `ROK1`
+| Column | Type | Notes |
+|--------|------|-------|
+| `ICO` | BIGINT | Subject identifier |
+| `DENUMR` | VARCHAR | Day of death |
+| `MESUMR` | VARCHAR | Month of death; values: `1–12` |
+| `ROKUMR` | BIGINT | Year of death (two-digit: 77–99) |
+| `PRICUMR` | BIGINT | Cause of death code |
+
+---
+
+### `Atherosclerosis.Letter` (60 columns)
+**Clinical letter records with disease history, medications, and lifestyle updates.**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `ICO` | BIGINT | Subject identifier |
+| `MESDOT` | VARCHAR | Letter month; values: `1–12` |
+| `ROKDOT` | BIGINT | Letter year (two-digit) |
+| `LEKCHOL` | BIGINT | Cholesterol medication |
+| `LEKTK` | BIGINT | Blood pressure medication |
+| `NEMOC1`–`NEMOC5` | VARCHAR | Disease codes; values: `01–23` |
+| `ROK1`–`ROK5` | VARCHAR/BIGINT | Year of disease code |
+| `HYPTK` | BIGINT | Hypertension treatment |
+| `ROKHYPTK` | VARCHAR | Year HTN treatment started |
+| `HYPLP` | BIGINT | Hyperlipidemia treatment |
+| `ROKHYPLP` | VARCHAR | Year hyperlipidemia treatment started; values: `60–99` |
+| `CUKROVKA` | BIGINT | Diabetes treatment |
+| `ROKCUKR` | VARCHAR | Year diabetes treatment started |
+| `CUKRTAB` | VARCHAR | Diabetes tablet therapy; values: `1, 2` |
+| `CUKRINS` | VARCHAR | Diabetes insulin therapy; values: `1, 2` |
+| `ODCUTAB`/`DOCUTAB` | VARCHAR | Diabetes tablet start/stop years |
+| `ODCUINS`/`DOCUINS` | VARCHAR | Diabetes insulin start/stop years |
+| `AP` | BIGINT | Antiplatelet therapy |
+| `SI` | BIGINT | Anticoagulation therapy |
+| `MM` | VARCHAR | Beta-blocker therapy; values: `1, 2` |
+| `BDK` | BIGINT | ACE inhibitor therapy |
+| `DUSNOST` | VARCHAR | Dyspnea present; values: `1, 2` |
+| `DUSCHUZE` | VARCHAR | Dyspnea on exertion; values: `1, 2` |
+| `DUSBEH` | VARCHAR | Dyspnea at rest; values: `1, 2` |
+| `DUSROVIN` | VARCHAR | Paroxysmal nocturnal dyspnea; values: `1, 2` |
+| `DUKLID` | VARCHAR | Orthopnea; values: `1, 2` |
+| `DUSNOC` | VARCHAR | Nocturnal dyspnea; values: `1, 2` |
+| `KURAK` | VARCHAR | Current smoker; values: `1, 2` |
+| `KURAKBYV` | VARCHAR | Former smoker; values: `1, 2` |
+| `CIGDEN` | VARCHAR | Cigarettes per day; values: `0, 2–35` |
+| `DYMKA` | VARCHAR | Pipe/cigar use; values: `1, 2` |
+| `PASED` | VARCHAR | Passive smoking; values: `1, 2` |
+| `DIETA` | VARCHAR | Dietary modification; values: `1, 2` |
+| `JINADIE` | VARCHAR | Other diet type; values: `1, 2` |
+| `VAHA` | VARCHAR | Current weight (kg) |
+| `VAHAPRED10` | VARCHAR | Weight 10 years prior (kg) |

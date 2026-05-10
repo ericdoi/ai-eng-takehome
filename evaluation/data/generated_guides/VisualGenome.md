@@ -1,136 +1,111 @@
 # VisualGenome Schema Reference Guide
 
 ## Schema Summary
-The VisualGenome schema contains visual scene data with objects, their attributes, and relationships between objects in images.
-
----
-
-## Table Reference
-
-### VisualGenome.ATT_CLASSES
-**Meaning**: Attribute class definitions (synonyms: attribute types, attribute labels)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| ATT_CLASS_ID | BIGINT | Unique attribute identifier | attribute ID, attr ID |
-| ATT_CLASS | VARCHAR | Attribute name/label | attribute name, attribute type |
-
-**Notable values**: "building s", "indoors", "cluttered", "park", "two story"
-
----
-
-### VisualGenome.IMG_OBJ
-**Meaning**: Objects detected in images with bounding box coordinates (synonyms: image objects, detected objects, object instances)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| IMG_ID | BIGINT | Image identifier | image ID |
-| OBJ_SAMPLE_ID | BIGINT | Unique object instance identifier within image | object ID, object sample ID, instance ID |
-| OBJ_CLASS_ID | BIGINT | Reference to object class | object class ID, class ID |
-| X | BIGINT | Bounding box left coordinate (pixels) | x coordinate, left |
-| Y | BIGINT | Bounding box top coordinate (pixels) | y coordinate, top |
-| W | BIGINT | Bounding box width (pixels) | width |
-| H | BIGINT | Bounding box height (pixels) | height |
-
----
-
-### VisualGenome.IMG_OBJ_ATT
-**Meaning**: Attributes assigned to specific objects in images (synonyms: object attributes, attribute assignments)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| IMG_ID | BIGINT | Image identifier | image ID |
-| ATT_CLASS_ID | BIGINT | Reference to attribute class | attribute ID, attribute class ID |
-| OBJ_SAMPLE_ID | BIGINT | Reference to object instance | object ID, object sample ID |
-
----
-
-### VisualGenome.IMG_REL
-**Meaning**: Relationships/predicates between pairs of objects in images (synonyms: object relationships, predicates, spatial relationships)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| IMG_ID | BIGINT | Image identifier | image ID |
-| PRED_CLASS_ID | BIGINT | Reference to predicate/relationship class | predicate ID, relationship ID, pred ID |
-| OBJ1_SAMPLE_ID | BIGINT | First object in relationship | subject object, object 1 |
-| OBJ2_SAMPLE_ID | BIGINT | Second object in relationship | object object, object 2 |
-
----
-
-### VisualGenome.OBJ_CLASSES
-**Meaning**: Object class definitions (synonyms: object types, object labels, object categories)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| OBJ_CLASS_ID | BIGINT | Unique object class identifier | object class ID, class ID |
-| OBJ_CLASS | VARCHAR | Object class name/label | object name, object type, class name |
-
-**Notable values**: "awning", "goggles", "dot", "kitchen", "feathers"
-
----
-
-### VisualGenome.PRED_CLASSES
-**Meaning**: Predicate/relationship class definitions (synonyms: relationship types, relationship labels, predicate types)
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| PRED_CLASS_ID | BIGINT | Unique predicate identifier | predicate ID, relationship ID, pred ID |
-| PRED_CLASS | VARCHAR | Predicate name/label | predicate name, relationship type, relationship name |
-
-**Notable values**: "playing on", "looking a", "to left of", "beyond", "covers"
+Visual Genome is a structured dataset of images with annotated objects, their attributes, and spatial relationships between objects.
 
 ---
 
 ## Join Paths
 
-**Objects to Object Classes**:
+**Objects with their class names:**
 ```sql
-IMG_OBJ.OBJ_CLASS_ID = OBJ_CLASSES.OBJ_CLASS_ID
+FROM VisualGenome.IMG_OBJ io
+JOIN VisualGenome.OBJ_CLASSES oc ON io.OBJ_CLASS_ID = oc.OBJ_CLASS_ID
 ```
 
-**Objects to Attributes**:
+**Objects with their attributes:**
 ```sql
-IMG_OBJ.IMG_ID = IMG_OBJ_ATT.IMG_ID 
-AND IMG_OBJ.OBJ_SAMPLE_ID = IMG_OBJ_ATT.OBJ_SAMPLE_ID
+FROM VisualGenome.IMG_OBJ io
+JOIN VisualGenome.IMG_OBJ_ATT ioa ON io.IMG_ID = ioa.IMG_ID AND io.OBJ_SAMPLE_ID = ioa.OBJ_SAMPLE_ID
+JOIN VisualGenome.ATT_CLASSES ac ON ioa.ATT_CLASS_ID = ac.ATT_CLASS_ID
 ```
 
-**Attributes to Attribute Classes**:
+**Object relationships (subject → predicate → object):**
 ```sql
-IMG_OBJ_ATT.ATT_CLASS_ID = ATT_CLASSES.ATT_CLASS_ID
-```
-
-**Relationships to Predicate Classes**:
-```sql
-IMG_REL.PRED_CLASS_ID = PRED_CLASSES.PRED_CLASS_ID
-```
-
-**Relationships to Objects (subject)**:
-```sql
-IMG_REL.IMG_ID = IMG_OBJ.IMG_ID 
-AND IMG_REL.OBJ1_SAMPLE_ID = IMG_OBJ.OBJ_SAMPLE_ID
-```
-
-**Relationships to Objects (object)**:
-```sql
-IMG_REL.IMG_ID = IMG_OBJ.IMG_ID 
-AND IMG_REL.OBJ2_SAMPLE_ID = IMG_OBJ.OBJ_SAMPLE_ID
+FROM VisualGenome.IMG_REL ir
+JOIN VisualGenome.IMG_OBJ io1 ON ir.IMG_ID = io1.IMG_ID AND ir.OBJ1_SAMPLE_ID = io1.OBJ_SAMPLE_ID
+JOIN VisualGenome.IMG_OBJ io2 ON ir.IMG_ID = io2.IMG_ID AND ir.OBJ2_SAMPLE_ID = io2.OBJ_SAMPLE_ID
+JOIN VisualGenome.OBJ_CLASSES oc1 ON io1.OBJ_CLASS_ID = oc1.OBJ_CLASS_ID
+JOIN VisualGenome.OBJ_CLASSES oc2 ON io2.OBJ_CLASS_ID = oc2.OBJ_CLASS_ID
+JOIN VisualGenome.PRED_CLASSES pc ON ir.PRED_CLASS_ID = pc.PRED_CLASS_ID
 ```
 
 ---
 
 ## Synonym Glossary
 
-| Common Term | Schema Reference |
-|-------------|------------------|
-| object type | `OBJ_CLASSES.OBJ_CLASS` |
-| object class | `OBJ_CLASSES` table |
-| attribute type | `ATT_CLASSES.ATT_CLASS` |
-| attribute class | `ATT_CLASSES` table |
-| relationship type | `PRED_CLASSES.PRED_CLASS` |
-| predicate class | `PRED_CLASSES` table |
-| bounding box | `IMG_OBJ.X, IMG_OBJ.Y, IMG_OBJ.W, IMG_OBJ.H` |
-| object location | `IMG_OBJ.X, IMG_OBJ.Y` |
-| object size | `IMG_OBJ.W, IMG_OBJ.H` |
-| spatial relationship | `IMG_REL` with `PRED_CLASSES` |
-| object instance | `IMG_OBJ.OBJ_SAMPLE_ID` |
-| image | `IMG_ID` |
+| Term | Schema Reference |
+|------|------------------|
+| object bounding box | `X, Y, W, H` in `VisualGenome.IMG_OBJ` |
+| object location | `X, Y` (top-left corner); `W, H` (width, height) |
+| spatial relationship | `VisualGenome.IMG_REL` with `PRED_CLASS` |
+| object property / quality | `VisualGenome.ATT_CLASSES` |
+| object type / category | `VisualGenome.OBJ_CLASSES` |
+
+---
+
+## Table Reference
+
+### `VisualGenome.ATT_CLASSES`
+Attribute/property class catalog. Maps attribute IDs to human-readable attribute names.
+
+| Column | Notes |
+|--------|-------|
+| `ATT_CLASS_ID` | Primary key; used in `IMG_OBJ_ATT.ATT_CLASS_ID` |
+| `ATT_CLASS` | Attribute name (e.g., "building s", "indoors", "cluttered", "park", "two story") |
+
+---
+
+### `VisualGenome.IMG_OBJ`
+Detected objects in images with bounding box coordinates.
+
+| Column | Notes |
+|--------|-------|
+| `IMG_ID` | Image identifier; links to `IMG_OBJ_ATT`, `IMG_REL` |
+| `OBJ_SAMPLE_ID` | Object instance ID within image; unique per (IMG_ID, OBJ_SAMPLE_ID) pair |
+| `OBJ_CLASS_ID` | Foreign key to `OBJ_CLASSES.OBJ_CLASS_ID` |
+| `X, Y` | Top-left corner of bounding box (pixels) |
+| `W, H` | Width and height of bounding box (pixels) |
+
+---
+
+### `VisualGenome.IMG_OBJ_ATT`
+Attributes assigned to specific objects in images.
+
+| Column | Notes |
+|--------|-------|
+| `IMG_ID` | Image identifier |
+| `OBJ_SAMPLE_ID` | Object instance ID; links to `IMG_OBJ.OBJ_SAMPLE_ID` |
+| `ATT_CLASS_ID` | Foreign key to `ATT_CLASSES.ATT_CLASS_ID` |
+
+---
+
+### `VisualGenome.IMG_REL`
+Spatial and semantic relationships between pairs of objects.
+
+| Column | Notes |
+|--------|-------|
+| `IMG_ID` | Image identifier |
+| `OBJ1_SAMPLE_ID` | Subject object; links to `IMG_OBJ.OBJ_SAMPLE_ID` |
+| `OBJ2_SAMPLE_ID` | Object (target) of relationship; links to `IMG_OBJ.OBJ_SAMPLE_ID` |
+| `PRED_CLASS_ID` | Foreign key to `PRED_CLASSES.PRED_CLASS_ID` |
+
+---
+
+### `VisualGenome.OBJ_CLASSES`
+Object class catalog. Maps object IDs to human-readable class names.
+
+| Column | Notes |
+|--------|-------|
+| `OBJ_CLASS_ID` | Primary key; used in `IMG_OBJ.OBJ_CLASS_ID` |
+| `OBJ_CLASS` | Object class name (e.g., "awning", "goggles", "dot", "kitchen", "feathers") |
+
+---
+
+### `VisualGenome.PRED_CLASSES`
+Predicate/relationship class catalog. Maps relationship IDs to human-readable relationship names.
+
+| Column | Notes |
+|--------|-------|
+| `PRED_CLASS_ID` | Primary key; used in `IMG_REL.PRED_CLASS_ID` |
+| `PRED_CLASS` | Relationship name (e.g., "playing on", "looking a", "to left of", "beyond", "covers") |

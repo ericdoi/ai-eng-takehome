@@ -360,13 +360,18 @@ class Agent:
 
             "WORKFLOW:\n"
             "1. find_schema — ALWAYS your first call. Pass the question or key terms as the query.\n"
-            "   Returns the full guide: exact table names, column names, join paths, and\n"
+            "   The response header names the exact SQL schema (e.g. 'ErgastF1', 'lahman_2014').\n"
+            "   Use that name verbatim — in FROM clauses, in list_tables(), in describe_table().\n"
+            "   Do NOT try alternative spellings or guesses; the name given IS the correct one.\n"
+            "   The guide also contains exact table names, column names, join paths, and\n"
             "   business rules already written as SQL conditions. Read it carefully.\n"
-            "2. run_sql — verify your query returns the right shape of results.\n"
+            "2. run_sql — ALWAYS run your query before submitting. Check row count and a few\n"
+            "   sample values to confirm the result looks right. Fix any errors before submitting.\n"
             "3. submit_answer — submit your final SQL query.\n\n"
 
             "If find_schema does not name the exact columns you need, use list_tables(schema) "
-            "and describe_table(schema, table) to fill gaps. Never guess column names.\n\n"
+            "and describe_table(schema, table) to fill gaps — passing the schema name exactly "
+            "as returned by find_schema. Never guess column names.\n\n"
 
             "GRADER (loose comparison):\n"
             "- Row count must match exactly\n"

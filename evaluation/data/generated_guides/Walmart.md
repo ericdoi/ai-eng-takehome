@@ -1,128 +1,57 @@
 # Walmart Schema Reference Guide
 
 ## Schema Summary
-This schema contains Walmart store sales training data linked to weather station observations, enabling analysis of how weather conditions correlate with unit sales across stores and items.
-
----
-
-## Table Reference
-
-### `Walmart.key`
-**Meaning:** Store-to-weather-station mapping table. Associates each Walmart store with its nearest weather observation station.
-
-**Columns:**
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `store_nbr` | BIGINT | Unique store identifier | store ID, store number |
-| `station_nbr` | BIGINT | Weather station identifier | station ID, station number |
-
-**Notable values:** store_nbr ranges 1–33+; station_nbr ranges 1–5+
-
----
-
-### `Walmart.station`
-**Meaning:** Weather station reference table. Lists all weather observation stations.
-
-**Columns:**
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `station_nbr` | BIGINT | Unique weather station identifier | station ID, station number |
-
-**Notable values:** station_nbr values: 1, 2, 3, 4, 5
-
----
-
-### `Walmart.train`
-**Meaning:** Sales training dataset. Daily unit sales by store and item.
-
-**Columns:**
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `date` | DATE | Sales date (YYYY-MM-DD format) | transaction date, day |
-| `store_nbr` | BIGINT | Store identifier | store ID, store number |
-| `item_nbr` | BIGINT | Product/item identifier | product ID, product number, SKU |
-| `units` | BIGINT | Number of units sold | quantity, sales volume, sales units |
-
-**Notable values:** date starts 2012-01-01; units can be 0 (no sales)
-
----
-
-### `Walmart.weather`
-**Meaning:** Daily weather observations by station. Contains 20 meteorological measurements per station-date combination.
-
-**Columns:**
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `station_nbr` | BIGINT | Weather station identifier | station ID, station number |
-| `date` | DATE | Observation date (YYYY-MM-DD format) | day |
-| `tmax` | BIGINT | Maximum temperature (°F) | high temperature, max temp |
-| `tmin` | BIGINT | Minimum temperature (°F) | low temperature, min temp |
-| `tavg` | BIGINT | Average temperature (°F) | mean temperature, avg temp |
-| `depart` | BIGINT | Temperature departure from normal (°F) | temperature anomaly |
-| `dewpoint` | BIGINT | Dew point (°F) | dew point temperature |
-| `wetbulb` | BIGINT | Wet bulb temperature (°F) | wet bulb |
-| `heat` | BIGINT | Heating degree days | HDD |
-| `cool` | BIGINT | Cooling degree days | CDD |
-| `sunrise` | TIME | Sunrise time (HH:MM:SS) | sunrise time |
-| `sunset` | TIME | Sunset time (HH:MM:SS) | sunset time |
-| `codesum` | VARCHAR | Weather condition codes (space-separated) | weather code, condition |
-| `snowfall` | DOUBLE | Snowfall (inches) | snow |
-| `preciptotal` | DOUBLE | Total precipitation (inches) | precipitation, rainfall, rain |
-| `stnpressure` | DOUBLE | Station pressure (inches Hg) | barometric pressure, pressure |
-| `sealevel` | DOUBLE | Sea level pressure (inches Hg) | sea level pressure |
-| `resultspeed` | DOUBLE | Wind speed (mph) | wind speed, gust speed |
-| `resultdir` | BIGINT | Wind direction (degrees 0–360) | wind direction |
-| `avgspeed` | DOUBLE | Average wind speed (mph) | average wind speed |
-
-**Notable values:** 
-- `codesum` examples: "RA FZFG BR" (rain, freezing fog, mist), empty string (clear)
-- `snowfall`, `preciptotal`, `stnpressure`, `sealevel`, `resultspeed`, `avgspeed` may contain NaN
-- `depart`, `dewpoint`, `wetbulb`, `heat`, `cool`, `sunrise`, `sunset` may contain NULL/<NA>
-
----
+This schema contains Walmart store sales training data linked to weather observations by geographic station, enabling analysis of unit sales across stores and dates with corresponding weather conditions.
 
 ## Join Paths
 
-**Store to Weather Station:**
+**Store sales with weather data:**
 ```sql
-Walmart.train t
+FROM Walmart.train t
 JOIN Walmart.key k ON t.store_nbr = k.store_nbr
 JOIN Walmart.weather w ON k.station_nbr = w.station_nbr AND t.date = w.date
 ```
 
-**Direct Station Reference:**
+**All stations:**
 ```sql
-Walmart.weather w
-JOIN Walmart.station s ON w.station_nbr = s.station_nbr
+FROM Walmart.station s
+LEFT JOIN Walmart.key k ON s.station_nbr = k.station_nbr
 ```
 
-**Store-Station Mapping Only:**
+**Weather for a specific store:**
 ```sql
-Walmart.key k
-JOIN Walmart.station s ON k.station_nbr = s.station_nbr
+FROM Walmart.train t
+JOIN Walmart.key k ON t.store_nbr = k.store_nbr
+JOIN Walmart.weather w ON k.station_nbr = w.station_nbr AND t.date = w.date
+WHERE t.store_nbr = <store_nbr>
 ```
 
----
+## Table Reference
 
-## Synonym Glossary
+### `Walmart.key`
+Maps stores to weather stations. Many stores can share one station.
+- `store_nbr` – Store identifier
+- `station_nbr` – Weather station identifier (foreign key to `Walmart.station`)
 
-| Common Term | Exact Schema Reference |
-|-------------|------------------------|
-| store | `Walmart.train.store_nbr` or `Walmart.key.store_nbr` |
-| station | `Walmart.weather.station_nbr` or `Walmart.station.station_nbr` |
-| sales | `Walmart.train.units` |
-| units sold | `Walmart.train.units` |
-| product | `Walmart.train.item_nbr` |
-| item | `Walmart.train.item_nbr` |
-| date | `Walmart.train.date` or `Walmart.weather.date` |
-| temperature | `Walmart.weather.tavg`, `tmax`, or `tmin` |
-| high temp | `Walmart.weather.tmax` |
-| low temp | `Walmart.weather.tmin` |
-| rain | `Walmart.weather.preciptotal` |
-| precipitation | `Walmart.weather.preciptotal` |
-| snow | `Walmart.weather.snowfall` |
-| wind | `Walmart.weather.resultspeed` or `avgspeed` |
-| pressure | `Walmart.weather.stnpressure` or `sealevel` |
-| weather condition | `Walmart.weather.codesum` |
-| heating degree days | `Walmart.weather.heat` |
-| cooling degree days | `Walmart.weather.cool` |
+### `Walmart.station`
+Weather station identifiers.
+- `station_nbr` – Unique station identifier
+
+### `Walmart.train`
+Daily unit sales by store and item.
+- `date` – Sales date (DATE)
+- `store_nbr` – Store identifier
+- `item_nbr` – Product/item identifier
+- `units` – Units sold (BIGINT, can be 0)
+
+### `Walmart.weather`
+Daily weather observations by station.
+- `station_nbr` – Weather station identifier
+- `date` – Observation date (DATE)
+- **Temperature metrics (BIGINT):** `tmax`, `tmin`, `tavg`, `depart`, `dewpoint`, `wetbulb`
+- **Degree days (BIGINT):** `heat`, `cool` (heating/cooling degree days)
+- **Time fields (TIME):** `sunrise`, `sunset` (may be NULL)
+- **Precipitation (DOUBLE):** `preciptotal`, `snowfall`
+- **Pressure (DOUBLE):** `stnpressure`, `sealevel`
+- **Wind (DOUBLE, BIGINT):** `resultspeed`, `resultdir` (direction in degrees), `avgspeed`
+- `codesum` – Weather code summary (VARCHAR, e.g., `"RA FZFG BR"` for rain, freezing fog, mist; often empty string for clear conditions)

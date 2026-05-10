@@ -1,277 +1,187 @@
-# SQL Reference Guide: Employee Schema
+# Employee Schema Reference Guide
 
-## 1. Schema Summary
-
-The `employee` schema contains human resources data tracking employees, their department assignments, management hierarchies, compensation history, and job titles over time.
-
----
-
-## 2. Table Reference
-
-### Table: `employee.departments`
-**Meaning:** Master list of organizational departments.  
-**Synonyms:** org units, divisions
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `dept_no` | VARCHAR | Department identifier (primary key) | dept_id, department_code |
-| `dept_name` | VARCHAR | Department name | name, department_name |
-
-**Enumerated Values:**
-- `d001` = Marketing
-- `d002` = Finance
-- `d003` = Human Resources
-- `d004` = Production
-- `d005` = Development
-- `d006` = Quality Management
-- `d007` = Research
-- `d008` = Sales
-- `d009` = Customer Service
+## Schema Summary
+The `employee` schema contains HR master data: employee demographics, department assignments, management hierarchies, compensation history, and job titles with effective date ranges.
 
 ---
 
-### Table: `employee.employees`
-**Meaning:** Core employee master data with demographics and hire information.  
-**Synonyms:** staff, personnel, workers
+## Join Paths
 
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `emp_no` | BIGINT | Employee identifier (primary key) | employee_id, emp_id |
-| `birth_date` | DATE | Date of birth | dob, date_of_birth |
-| `first_name` | VARCHAR | Given name | fname, given_name |
-| `last_name` | VARCHAR | Family name | lname, surname |
-| `gender` | VARCHAR | Gender classification | sex |
-| `hire_date` | DATE | Employment start date | start_date, employment_date |
-
-**Enumerated Values:**
-- `M` = Male
-- `F` = Female
-
----
-
-### Table: `employee.dept_emp`
-**Meaning:** Historical record of employee department assignments with effective date ranges.  
-**Synonyms:** department assignments, employee departments, org assignments
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `emp_no` | BIGINT | Employee identifier (foreign key to `employees`) | employee_id |
-| `dept_no` | VARCHAR | Department identifier (foreign key to `departments`) | department_id |
-| `from_date` | DATE | Assignment start date | start_date, effective_from |
-| `to_date` | DATE | Assignment end date | end_date, effective_to |
-
-**Special Values:**
-- `to_date = '9999-01-01'` indicates current/active assignment
-
----
-
-### Table: `employee.dept_manager`
-**Meaning:** Historical record of department manager assignments with effective date ranges.  
-**Synonyms:** management assignments, manager history
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `dept_no` | VARCHAR | Department identifier (foreign key to `departments`) | department_id |
-| `emp_no` | BIGINT | Employee identifier (foreign key to `employees`) | employee_id, manager_id |
-| `from_date` | DATE | Management assignment start date | start_date, effective_from |
-| `to_date` | DATE | Management assignment end date | end_date, effective_to |
-
-**Special Values:**
-- `to_date = '9999-01-01'` indicates current/active management role
-
----
-
-### Table: `employee.salaries`
-**Meaning:** Historical compensation records with effective date ranges.  
-**Synonyms:** compensation, pay history, wage records
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `emp_no` | BIGINT | Employee identifier (foreign key to `employees`) | employee_id |
-| `salary` | BIGINT | Compensation amount (currency units) | compensation, pay, wage |
-| `from_date` | DATE | Salary effective start date | start_date, effective_from |
-| `to_date` | DATE | Salary effective end date | end_date, effective_to |
-
-**Special Values:**
-- `to_date = '9999-01-01'` indicates current/active salary
-
----
-
-### Table: `employee.titles`
-**Meaning:** Historical record of employee job titles with effective date ranges.  
-**Synonyms:** job titles, position history, role history
-
-| Column | Type | Meaning | Synonyms |
-|--------|------|---------|----------|
-| `emp_no` | BIGINT | Employee identifier (foreign key to `employees`) | employee_id |
-| `title` | VARCHAR | Job title or position name | job_title, position, role |
-| `from_date` | DATE | Title effective start date | start_date, effective_from |
-| `to_date` | DATE | Title effective end date | end_date, effective_to |
-
-**Enumerated Values:**
-- `Assistant Engineer`
-- `Engineer`
-- `Manager`
-- `Senior Engineer`
-- `Senior Staff`
-- `Staff`
-- `Technique Leader`
-
-**Special Values:**
-- `to_date = '9999-01-01'` indicates current/active title
-
----
-
-## 3. Join Paths
-
-| Join Type | Condition |
-|-----------|-----------|
-| `employees` → `dept_emp` | `employees.emp_no = dept_emp.emp_no` |
-| `employees` → `dept_manager` | `employees.emp_no = dept_manager.emp_no` |
-| `employees` → `salaries` | `employees.emp_no = salaries.emp_no` |
-| `employees` → `titles` | `employees.emp_no = titles.emp_no` |
-| `dept_emp` → `departments` | `dept_emp.dept_no = departments.dept_no` |
-| `dept_manager` → `departments` | `dept_manager.dept_no = departments.dept_no` |
-
----
-
-## 4. Business Rules as SQL
-
-### Tenure Calculations
-
-**Rule: Legacy workforce (hired before 1990-01-01)**
+**Current department assignment for an employee:**
 ```sql
-WHERE employees.hire_date < '1990-01-01'
+SELECT e.emp_no, e.first_name, e.last_name, d.dept_no, d.dept_name
+FROM employee.employees e
+JOIN employee.dept_emp de ON e.emp_no = de.emp_no
+JOIN employee.departments d ON de.dept_no = d.dept_no
+WHERE de.to_date = '9999-01-01'
 ```
 
-**Rule: Calculate tenure in days**
+**Current salary for an employee:**
 ```sql
-DATEDIFF(day, employees.hire_date, CURRENT_DATE) AS tenure_days
+SELECT e.emp_no, e.first_name, s.salary, s.from_date, s.to_date
+FROM employee.employees e
+JOIN employee.salaries s ON e.emp_no = s.emp_no
+WHERE s.to_date = '9999-01-01'
 ```
 
-**Rule: Aggregate age statistics by decade (not individual ages)**
+**Current title for an employee:**
 ```sql
-FLOOR(DATEDIFF(year, employees.birth_date, CURRENT_DATE) / 10) * 10 AS age_decade
--- Do NOT select individual birth_date or calculate individual age
+SELECT e.emp_no, e.first_name, t.title, t.from_date, t.to_date
+FROM employee.employees e
+JOIN employee.titles t ON e.emp_no = t.emp_no
+WHERE t.to_date = '9999-01-01'
+```
+
+**Department manager details:**
+```sql
+SELECT d.dept_no, d.dept_name, dm.emp_no, e.first_name, e.last_name, dm.from_date, dm.to_date
+FROM employee.dept_manager dm
+JOIN employee.departments d ON dm.dept_no = d.dept_no
+JOIN employee.employees e ON dm.emp_no = e.emp_no
+WHERE dm.to_date = '9999-01-01'
 ```
 
 ---
 
-### Department Rules
+## Business Rules as SQL
 
-**Rule: Customer Service department split in 2005**
+**Legacy workforce (hired before 1990):**
 ```sql
--- For historical comparisons before 2005-01-01, exclude or flag:
-WHERE dept_emp.to_date >= '2005-01-01' OR dept_emp.dept_no != 'd009'
+WHERE e.hire_date < '1990-01-01'
 ```
 
-**Rule: Count each employee only once using most recent department**
+**Current employees only:**
 ```sql
--- Use window function to identify most recent assignment:
-WHERE dept_emp.to_date = (
-  SELECT MAX(de2.to_date) 
-  FROM employee.dept_emp de2 
-  WHERE de2.emp_no = dept_emp.emp_no
+WHERE de.to_date = '9999-01-01'
+```
+
+**Exclude department managers from headcount:**
+```sql
+WHERE e.emp_no NOT IN (
+  SELECT emp_no FROM employee.dept_manager WHERE to_date = '9999-01-01'
 )
 ```
 
-**Rule: Exclude department managers from non-management headcount**
+**Most recent department assignment (for single-count headcount):**
 ```sql
-WHERE dept_emp.emp_no NOT IN (
-  SELECT DISTINCT emp_no 
-  FROM employee.dept_manager 
-  WHERE dept_manager.to_date = '9999-01-01'
+WHERE de.emp_no IN (
+  SELECT emp_no FROM employee.dept_emp
+  WHERE to_date = '9999-01-01'
 )
 ```
 
----
-
-### Salary Analytics
-
-**Rule: Report salary with effective date range**
+**Title change within 90 days of hire (correction, not promotion):**
 ```sql
--- Always include in output:
-salaries.from_date, salaries.to_date
--- Specify query date context in documentation
+WHERE DATEDIFF(DAY, e.hire_date, t.from_date) <= 90
 ```
 
-**Rule: Flag outlier salaries (>3 standard deviations from department mean)**
+**Tenure risk (same title for 7+ years):**
 ```sql
--- Calculate per department:
-WHERE ABS(salaries.salary - dept_mean) > 3 * dept_stddev
--- Flag but do not exclude from results
+WHERE DATEDIFF(DAY, t.from_date, t.to_date) >= 2555
+  AND t.to_date = '9999-01-01'
 ```
 
-**Rule: Suppress salary ranges with fewer than 5 employees**
+**Senior Engineer title (valid from 1995 onward only):**
 ```sql
-HAVING COUNT(DISTINCT salaries.emp_no) >= 5
+WHERE t.title = 'Senior Engineer' AND t.from_date >= '1995-01-01'
 ```
 
----
-
-### Title Progression
-
-**Rule: Title changes within 90 days of hire are corrections (exclude from promotion count)**
+**Minimum cell size for gender reporting (10+ employees):**
 ```sql
-WHERE DATEDIFF(day, employees.hire_date, titles.from_date) > 90
+GROUP BY e.gender
+HAVING COUNT(e.emp_no) >= 10
 ```
 
-**Rule: Senior Engineer comparisons only after 1995**
+**Salary outlier flag (3+ standard deviations from department mean):**
 ```sql
-WHERE titles.title = 'Senior Engineer' AND titles.from_date >= '1995-01-01'
-```
-
-**Rule: Flag tenure risk (same title >7 years)**
-```sql
-WHERE DATEDIFF(day, titles.from_date, titles.to_date) > 2555
--- 2555 days ≈ 7 years
--- AND titles.to_date = '9999-01-01' (still in role)
+WHERE ABS(s.salary - dept_mean) > 3 * dept_stddev
 ```
 
 ---
 
-### Gender Reporting
+## Synonym Glossary
 
-**Rule: Minimum cell size of 10 for gender-based analytics**
-```sql
-GROUP BY employees.gender
-HAVING COUNT(*) >= 10
-```
-
-**Rule: Include gender difference column**
-```sql
--- Calculate metric for each gender, then:
-MAX(CASE WHEN employees.gender = 'M' THEN metric_value END) -
-MAX(CASE WHEN employees.gender = 'F' THEN metric_value END) AS gender_difference
-```
-
-**Rule: Pay equity analysis must control for department, title, and tenure**
-```sql
--- Include in GROUP BY and WHERE:
-GROUP BY 
-  employees.gender,
-  dept_emp.dept_no,
-  titles.title,
-  FLOOR(DATEDIFF(year, employees.hire_date, CURRENT_DATE) / 5) * 5 AS tenure_bucket
-```
+| Term | Schema Reference |
+|------|------------------|
+| tenure (years) | `DATEDIFF(YEAR, e.hire_date, GETDATE())` |
+| age by decade | `FLOOR(DATEDIFF(YEAR, e.birth_date, GETDATE()) / 10) * 10` |
+| current salary | `s.salary WHERE s.to_date = '9999-01-01'` |
+| current title | `t.title WHERE t.to_date = '9999-01-01'` |
+| current department | `d.dept_name WHERE de.to_date = '9999-01-01'` |
+| promotion | `t.title change WHERE DATEDIFF(DAY, e.hire_date, t.from_date) > 90` |
+| active employee | `de.to_date = '9999-01-01'` |
+| terminated employee | `de.to_date < '9999-01-01'` |
+| manager | `emp_no IN (SELECT emp_no FROM employee.dept_manager WHERE to_date = '9999-01-01')` |
 
 ---
 
-## 5. Synonym Glossary
+## Table Reference
 
-| Common Term | Exact Schema Reference |
-|-------------|------------------------|
-| employee count, headcount | `COUNT(DISTINCT employees.emp_no)` |
-| current department | `dept_emp WHERE dept_emp.to_date = '9999-01-01'` |
-| current salary | `salaries WHERE salaries.to_date = '9999-01-01'` |
-| current title | `titles WHERE titles.to_date = '9999-01-01'` |
-| current manager | `dept_manager WHERE dept_manager.to_date = '9999-01-01'` |
-| tenure, years of service | `DATEDIFF(year, employees.hire_date, CURRENT_DATE)` |
-| legacy employee | `employees WHERE hire_date < '1990-01-01'` |
-| promotion | `titles WHERE DATEDIFF(day, employees.hire_date, titles.from_date) > 90` |
-| department transfer | `dept_emp WHERE dept_emp.to_date < '9999-01-01'` |
-| pay raise | `salaries WHERE salaries.salary > previous_salary_record` |
-| age bracket | `FLOOR(DATEDIFF(year, birth_date, CURRENT_DATE) / 10) * 10` |
-| gender gap | `metric_M - metric_F` (with `COUNT >= 10` per gender) |
-| management headcount | `COUNT(DISTINCT dept_manager.emp_no)` |
-| non-management headcount | `COUNT(DISTINCT dept_emp.emp_no) excluding dept_manager.emp_no` |
+### `employee.employees`
+Master employee records. **Synonyms:** staff, workforce, personnel.
+
+| Column | Notes |
+|--------|-------|
+| `emp_no` | Primary key; BIGINT. |
+| `birth_date` | DATE. Never report individual ages; use decade aggregation only. |
+| `first_name`, `last_name` | VARCHAR. |
+| `gender` | VARCHAR. Enum: `'M'`, `'F'`. Requires minimum 10-person cell size for reporting. |
+| `hire_date` | DATE. Use to calculate tenure and identify legacy workforce (< 1990-01-01). |
+
+---
+
+### `employee.departments`
+Department master list. **Synonyms:** org, division, unit.
+
+| Column | Notes |
+|--------|-------|
+| `dept_no` | Primary key; VARCHAR. Enum: `d001`–`d009`. |
+| `dept_name` | VARCHAR. Enum: `'Customer Service'`, `'Development'`, `'Finance'`, `'Human Resources'`, `'Marketing'`, `'Production'`, `'Quality Management'`, `'Research'`, `'Sales'`. **Note:** `d009` (Customer Service) was split in 2005; adjust historical comparisons. |
+
+---
+
+### `employee.dept_emp`
+Employee-to-department assignments with effective dates. **Synonyms:** department membership, assignment history.
+
+| Column | Notes |
+|--------|-------|
+| `emp_no` | BIGINT; foreign key to `employee.employees`. |
+| `dept_no` | VARCHAR; foreign key to `employee.departments`. |
+| `from_date` | DATE; assignment start. |
+| `to_date` | DATE; assignment end. `'9999-01-01'` = current. **Critical:** Employees can hold multiple department records; use `to_date = '9999-01-01'` to identify current assignment. For headcount, count each employee once using most recent department only. |
+
+---
+
+### `employee.dept_manager`
+Department manager assignments with effective dates. **Synonyms:** management, leadership.
+
+| Column | Notes |
+|--------|-------|
+| `dept_no` | VARCHAR; foreign key to `employee.departments`. |
+| `emp_no` | BIGINT; foreign key to `employee.employees`. |
+| `from_date` | DATE; management start. |
+| `to_date` | DATE; management end. `'9999-01-01'` = current. **Critical:** Exclude these employees from non-management headcount metrics. |
+
+---
+
+### `employee.salaries`
+Compensation history with effective date ranges. **Synonyms:** compensation, pay, wages.
+
+| Column | Notes |
+|--------|-------|
+| `emp_no` | BIGINT; foreign key to `employee.employees`. |
+| `salary` | BIGINT. **Critical:** Point-in-time data; always specify effective date range. Flag outliers (>3 σ from department mean) but do not exclude. Never disclose ranges with <5 employees; aggregate to broader grouping. |
+| `from_date` | DATE; salary period start. |
+| `to_date` | DATE; salary period end. `'9999-01-01'` = current. |
+
+---
+
+### `employee.titles`
+Job title history with effective date ranges. **Synonyms:** position, role, job.
+
+| Column | Notes |
+|--------|-------|
+| `emp_no` | BIGINT; foreign key to `employee.employees`. |
+| `title` | VARCHAR. Enum: `'Assistant Engineer'`, `'Engineer'`, `'Manager'`, `'Senior Engineer'`, `'Senior Staff'`, `'Staff'`, `'Technique Leader'`. **Critical:** Title changes within 90 days of hire are corrections, not promotions. `'Senior Engineer'` valid for comparison only from 1995 onward (title inflation). |
+| `from_date` | DATE; title period start. |
+| `to_date` | DATE; title period end. `'9999-01-01'` = current. **Tenure risk flag:** Same title for ≥7 years with `to_date = '9999-01-01'`. |

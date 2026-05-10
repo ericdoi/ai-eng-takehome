@@ -18,9 +18,19 @@ combined in every run. Prompt engineering is abandoned. Full plan: `context/PLAN
   - Spot-checked business-rule SQL conditions (world, Accidents, Airline, Chess) — all correct
   - Wired into `evaluate.py` / `interactive.py`; system prompt simplified to find_schema → run_sql → submit
 
-- [ ] **Test interactively** on 2–3 known failure cases before full eval
+- [x] **Fix guide SQL qualification** — regenerated with schema-qualified names in all SQL snippets
+  - All join paths now use `Schema.table` form; LLM previously wrote bare table names
+  - Sections reordered: join paths + business rules first so truncation only clips column docs
+  - max_tokens raised 4096 → 8192; 55/76 guides still truncated but all have join paths + rules
+  - `find_schema` response now opens with prominent banner showing exact SQL schema name + usage examples
+  - System prompt updated: "use schema name verbatim — do NOT try alternative spellings"
 
-- [ ] **Run eval, record results** — target ≥ 30/64 hard (≥47%) to clear the variance threshold
+- [x] **Run eval, record results** — Run 6: 21/64 (32.8%). Navigation fixed (AGENT_ERROR 11→2). Logic still bottleneck (33/54 correct-table cases wrong).
+
+- [ ] **Improve logic / business-rule application** — top failing schemas: financial (7), Credit (6), Airline (6), lahman_2014 (5), Chess (4), employee (4), ErgastF1 (4)
+  - Spot-check guide quality for top 3 failing schemas; compare gold SQL to agent output
+  - Consider whether guide business-rule section is precise enough (e.g. financial loan status codes)
+  - [ ] Run eval again once guide or prompt improvements are made; target ≥ 30/64 (≥47%)
 
 ## Phase 0 — Debug harness (nice to have)
 
