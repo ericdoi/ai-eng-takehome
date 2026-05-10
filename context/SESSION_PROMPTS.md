@@ -154,3 +154,32 @@ Sensitive values (API key) redacted.
 18. Regenerating with sonnet/opus will be much more expensive than haiku and we likely won't be able to afford it on all schemas
 
 19. Also, please update context/SESSION_PROMPTS.md
+
+---
+
+## Session 4
+
+1. *(local command: `/clear`)*
+   We're working on an AI engineering takehome in `/Users/ericdoi/.../hex/ai-eng-takehome`. Read `context/STATE.md` to orient yourself, then `context/TODO.md` for what's next and `context/PLAN_business_logic.md` for implementation details on the current task.
+
+2. Sounds good. *(approving implementation of all 5 fixes)*
+
+3. Fixes should be general and not schema-specific.
+
+4. For 6, it can be more general: when in doubt, output original columns as well as synthesized ones since "extra columns on the returned dataframe are not penalized (if your agent returns extra columns, it's still correct)". This rule may be useful to give to the agent.
+
+5. Let's debug and document; we don't have time to do any more quality iterations, so we should write a WRAPUP document.
+
+6. Let's run on easy as well to get comprehensive results.
+
+7. We should clarify the "display column guidance" issue, since the "loose" eval criteria ignores column names.
+
+8. the table in "Run progression" needs a little more explanation on the funnel analysis
+
+9. Let's review the README.md to make sure our report covers all the necessary content.
+
+10. Good. Update worklog with anything missing and then add an end timestamp.
+
+11. Clean up the TODO.
+
+12. Update /Users/ericdoi/.../context/SESSION_PROMPTS.md

@@ -380,7 +380,18 @@ class Agent:
             "- Float values compared with ε=1e-4 tolerance\n\n"
 
             "Business rules in the guide (filters, thresholds, exclusions) are encoded as SQL. "
-            "Apply them exactly as written."
+            "Apply them exactly as written. Apply EXCLUDE rules ONLY when the question "
+            "explicitly targets the metric that rule applies to — generic aggregations "
+            "(totals, counts, averages) do NOT automatically trigger all EXCLUDE filters.\n\n"
+
+            "When joining a lookup or optional table (for descriptions, names, or enrichment), "
+            "use LEFT JOIN — not INNER JOIN — so unmatched rows are not silently dropped.\n\n"
+
+            "OUTPUT COLUMNS: Extra columns in your result are never penalized — the grader "
+            "ignores extra columns. When in doubt about which columns to include, include the "
+            "original source columns in addition to any derived or renamed ones. For example, "
+            "if you compute a full_name string, also keep the separate first and last name "
+            "columns. If you add a label column, also keep the underlying code column."
         )
 
     def run(self, prompt: str) -> Iterator[AgentEvent]:

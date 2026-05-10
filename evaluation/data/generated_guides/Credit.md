@@ -1,131 +1,149 @@
 # Credit Schema Reference Guide
 
 ## Schema Summary
-The Credit schema tracks credit card member transactions, charges, payments, and statements across providers and regions, with business rules for charge classification, member segmentation, and fraud detection.
+This schema tracks credit card member accounts, charges, payments, and statements across providers and regions, with business rules for charge classification, member segmentation, and fraud detection.
 
 ---
 
 ## Join Paths
 
-**Member → Charges → Providers:**
+### Member → Charge
 ```sql
 FROM Credit.member m
 JOIN Credit.charge c ON m.member_no = c.member_no
+```
+**[REQUIRED]** — all charge analysis must identify the member.
+
+### Charge → Provider
+```sql
+FROM Credit.charge c
 JOIN Credit.provider p ON c.provider_no = p.provider_no
 ```
+**[REQUIRED]** — to filter or group charges by provider.
 
-**Member → Statements → Charges:**
-```sql
-FROM Credit.member m
-JOIN Credit.statement s ON m.member_no = s.member_no
-JOIN Credit.charge c ON s.statement_no = c.statement_no
-```
-
-**Charge → Category:**
+### Charge → Category
 ```sql
 FROM Credit.charge c
 JOIN Credit.category cat ON c.category_no = cat.category_no
 ```
+**[OPTIONAL — display only]** — use `c.category_no` for filtering; join only when `category_desc` is needed in output.
 
-**Member → Corporation → Region:**
+### Charge → Statement
+```sql
+FROM Credit.charge c
+JOIN Credit.statement s ON c.statement_no = s.statement_no
+```
+**[REQUIRED]** — to assign charges to statement periods (do not use `charge_dt` for period assignment per reconciliation rules).
+
+### Member → Statement
 ```sql
 FROM Credit.member m
-JOIN Credit.corporation corp ON m.corp_no = corp.corp_no
-JOIN Credit.region r ON corp.region_no = r.region_no
+JOIN Credit.statement s ON m.member_no = s.member_no
 ```
+**[REQUIRED]** — to reconcile statement amounts.
 
-**Member → Payments → Statements:**
+### Member → Payment
 ```sql
 FROM Credit.member m
-JOIN Credit.payment pay ON m.member_no = pay.member_no
-JOIN Credit.statement s ON pay.statement_no = s.statement_no
+JOIN Credit.payment py ON m.member_no = py.member_no
 ```
+**[REQUIRED]** — to analyze payment behavior.
+
+### Member/Provider/Corporation → Region
+```sql
+FROM Credit.member m
+JOIN Credit.region r ON m.region_no = r.region_no
+```
+**[OPTIONAL — display only]** — use `region_no` for filtering; join only when `region_name` is needed in output.
+
+### Member → Corporation
+```sql
+FROM Credit.member m
+JOIN Credit.corporation c ON m.corp_no = c.corp_no
+```
+**[OPTIONAL — display only]** — use `corp_no` for filtering; join only when `corp_name` is needed in output.
 
 ---
 
 ## Business Rules as SQL
 
-**Refund exclusion (charge_code = 'RF'):**
+### Charge Classification
+
+**IDENTIFY refund:** `WHERE charge_code = 'RF'` — charges marked as refunds must be subtracted from gross volume, not counted as separate transactions.
+
+**EXCLUDE micro-transaction:** `WHERE charge_amt >= 5.0` — exclude charges under $5.00 from average transaction value calculations.
+
+**EXCLUDE test transaction:** `WHERE charge_amt != 0.01` — exclude any charge exactly equal to $0.01 from all analytics.
+
+**Combined refund + micro + test exclusion for valid charges:**
 ```sql
-WHERE c.charge_code != 'RF'
+WHERE charge_code != 'RF' 
+  AND charge_amt >= 5.0 
+  AND charge_amt != 0.01
 ```
 
-**Micro-transaction exclusion (< $5):**
-```sql
-WHERE c.charge_amt >= 5.00
-```
+### Member Segmentation
 
-**Test transaction exclusion (exactly $0.01):**
-```sql
-WHERE c.charge_amt != 0.01
-```
+**IDENTIFY inactive member:** `WHERE member_no IN (SELECT member_no FROM Credit.charge GROUP BY member_no HAVING COUNT(*) < 3)` — members with fewer than 3 charges in a 12-month period.
 
-**Inactive member filter (< 3 charges in 12 months):**
-```sql
-HAVING COUNT(c.charge_no) >= 3
-```
+**IDENTIFY premium member:** `WHERE member_no IN (SELECT member_no FROM Credit.charge GROUP BY member_no HAVING SUM(charge_amt) > 10000)` — members with lifetime charges exceeding $10,000.
 
-**Premium member segment (lifetime charges > $10,000):**
-```sql
-WHERE SUM(c.charge_amt) > 10000
-```
+**IDENTIFY transacting member (current period):** `WHERE member_no IN (SELECT DISTINCT member_no FROM Credit.charge WHERE statement_no IN (SELECT statement_no FROM Credit.statement WHERE statement_dt >= DATE_TRUNC('month', CURRENT_DATE)))` — members with at least one charge in the current statement period.
 
-**Active transacting members (exclude zero-charge members in current period):**
-```sql
-WHERE c.charge_no IS NOT NULL
-```
+**IDENTIFY total member:** `SELECT COUNT(DISTINCT member_no) FROM Credit.member` — all members, including those without charges in current period.
 
-**Essential spending categories (1–10):**
-```sql
-WHERE c.category_no BETWEEN 1 AND 10
-```
+### Provider Analysis
 
-**Discretionary spending categories (11–20):**
-```sql
-WHERE c.category_no BETWEEN 11 AND 20
-```
+**IDENTIFY essential spending category:** `WHERE category_no BETWEEN 1 AND 10` — categories 1–10 map to essential spending.
 
-**Provider minimum threshold (≥ 100 charges):**
-```sql
-HAVING COUNT(c.charge_no) >= 100
-```
+**IDENTIFY discretionary spending category:** `WHERE category_no BETWEEN 11 AND 20` — categories 11–20 map to discretionary spending.
 
-**Fraud flag: high charge + refund within 24 hours:**
-```sql
-WHERE c.charge_amt > 5000
-  AND EXISTS (
-    SELECT 1 FROM Credit.charge c2
-    WHERE c2.provider_no = c.provider_no
-      AND c2.charge_code = 'RF'
-      AND c2.charge_dt BETWEEN c.charge_dt AND c.charge_dt + INTERVAL 24 HOUR
-  )
-```
+**IDENTIFY other spending category:** `WHERE category_no > 20` — categories 21+ map to other.
 
-**Fraud flag: duplicate processing (same provider within 60 seconds):**
-```sql
-WHERE EXISTS (
-  SELECT 1 FROM Credit.charge c2
-  WHERE c2.provider_no = c.provider_no
-    AND c2.member_no = c.member_no
-    AND c2.charge_no != c.charge_no
-    AND ABS(EXTRACT(EPOCH FROM (c2.charge_dt - c.charge_dt))) <= 60
-)
-```
+**EXCLUDE long-tail provider:** `WHERE provider_no NOT IN (SELECT provider_no FROM Credit.charge GROUP BY provider_no HAVING COUNT(*) >= 100)` — exclude providers with fewer than 100 total charges from individual provider-level metrics; aggregate as "Long tail providers."
 
-**Statement reconciliation (charges minus refunds):**
+### Statement Reconciliation
+
+**Statement reconciliation check:**
 ```sql
-SELECT s.statement_no,
+SELECT s.statement_no, s.statement_amt,
   SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS reconciled_amt
 FROM Credit.statement s
 LEFT JOIN Credit.charge c ON s.statement_no = c.statement_no
-GROUP BY s.statement_no
+GROUP BY s.statement_no, s.statement_amt
+HAVING s.statement_amt != SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END)
 ```
+— statements where `statement_amt` does not equal sum of charges minus refunds indicate reconciliation issues.
 
-**Month-end statement assignment (use statement_no, not charge_dt):**
+**IDENTIFY negative balance statement:** `WHERE statement_amt < 0` — flag for data quality review but do not exclude from reporting.
+
+**IDENTIFY month-end statement (timing difference flag):** `WHERE EXTRACT(DAY FROM charge_dt) BETWEEN 28 AND 31` — use `statement_no` for period assignment, not `charge_dt`.
+
+### Fraud Rules
+
+**IDENTIFY high-value refund pair (fraud flag):** 
 ```sql
-FROM Credit.charge c
-JOIN Credit.statement s ON c.statement_no = s.statement_no
+SELECT c1.charge_no, c1.provider_no, c1.charge_amt, c2.charge_no
+FROM Credit.charge c1
+JOIN Credit.charge c2 ON c1.provider_no = c2.provider_no 
+  AND c1.member_no = c2.member_no
+  AND c2.charge_code = 'RF'
+  AND c2.charge_dt > c1.charge_dt
+  AND c2.charge_dt <= c1.charge_dt + INTERVAL '24 hours'
+WHERE c1.charge_amt > 5000
+  AND c1.charge_code != 'RF'
 ```
+— any charge over $5,000 followed by a refund within 24 hours.
+
+**IDENTIFY duplicate processing (fraud flag):**
+```sql
+SELECT provider_no, member_no, charge_dt, COUNT(*) AS charge_count
+FROM Credit.charge
+GROUP BY provider_no, member_no, charge_dt
+HAVING COUNT(*) > 1 
+  AND MAX(charge_dt) - MIN(charge_dt) <= INTERVAL '60 seconds'
+```
+— multiple charges from the same provider within 60 seconds.
 
 ---
 
@@ -133,124 +151,106 @@ JOIN Credit.statement s ON c.statement_no = s.statement_no
 
 | Term | Schema Reference |
 |------|------------------|
-| transaction | `Credit.charge` |
 | refund | `WHERE charge_code = 'RF'` |
-| cardholder | `Credit.member` |
-| merchant | `Credit.provider` |
-| spending category | `Credit.category` |
-| billing period | `Credit.statement` |
-| transaction amount | `charge.charge_amt` |
-| transaction date | `charge.charge_dt` |
-| payment received | `Credit.payment` |
+| micro-transaction | `WHERE charge_amt < 5.0` |
+| test charge | `WHERE charge_amt = 0.01` |
 | inactive member | `HAVING COUNT(charge_no) < 3` |
-| premium member | `WHERE SUM(charge_amt) > 10000` |
-| essential spending | `WHERE category_no BETWEEN 1 AND 10` |
-| discretionary spending | `WHERE category_no BETWEEN 11 AND 20` |
-| long tail provider | `HAVING COUNT(charge_no) < 100` |
+| premium member | `HAVING SUM(charge_amt) > 10000` |
+| active member / transacting member | member with ≥1 charge in current statement period |
+| total member | all rows in `Credit.member` |
+| essential spending | `category_no BETWEEN 1 AND 10` |
+| discretionary spending | `category_no BETWEEN 11 AND 20` |
+| long-tail provider | `COUNT(charge_no) < 100` |
+| statement reconciliation | `SUM(charges) - SUM(refunds) = statement_amt` |
+| fraud flag (high-value refund) | charge > $5,000 + refund within 24 hours |
+| fraud flag (duplicate) | multiple charges same provider within 60 seconds |
 
 ---
 
 ## Table Reference
 
 ### `Credit.member`
-**Meaning:** Credit card members (cardholders).  
-**Synonyms:** cardholder, account holder
+Member credit card accounts. Synonym: cardholder, account holder.
 
 | Column | Notes |
 |--------|-------|
-| `member_no` | Primary key |
-| `issue_dt`, `expr_dt` | Card issuance and expiration dates |
-| `region_no` | Foreign key to `Credit.region` |
-| `corp_no` | Foreign key to `Credit.corporation` (nullable) |
-| `prev_balance`, `curr_balance` | Previous and current statement balances |
-
----
+| `member_no` | Primary key. |
+| `prev_balance` | Balance from prior statement. |
+| `curr_balance` | Current balance. |
+| `issue_dt` | Card issue date. |
+| `expr_dt` | Card expiration date. |
+| `region_no` | Foreign key to `Credit.region`. |
+| `corp_no` | Foreign key to `Credit.corporation`; may be NULL. |
 
 ### `Credit.charge`
-**Meaning:** Individual credit card transactions.  
-**Synonyms:** transaction, purchase, charge
+Individual transactions. Synonym: transaction, purchase.
 
 | Column | Notes |
 |--------|-------|
-| `charge_no` | Primary key |
-| `member_no` | Foreign key to `Credit.member` |
-| `provider_no` | Foreign key to `Credit.provider` |
-| `category_no` | Foreign key to `Credit.category` |
-| `charge_dt` | Transaction timestamp; use `statement_no` for period assignment, not this field |
-| `charge_amt` | Transaction amount; exclude if < $5.00 or = $0.01 |
-| `charge_code` | Enumerated: `'RF'` = refund (subtract from gross volume); other values are normal charges |
-| `statement_no` | Foreign key to `Credit.statement`; authoritative for period assignment |
-
----
-
-### `Credit.category`
-**Meaning:** Spending categories for charge classification.  
-**Synonyms:** merchant category, spending type
-
-| Column | Notes |
-|--------|-------|
-| `category_no` | Primary key |
-| `category_desc` | Enumerated values: Clothing, Communication, Electronics, Entertainment, Groceries, Home Supplies, Lodging, Meals, Misc, Travel |
-
----
-
-### `Credit.statement`
-**Meaning:** Monthly billing statements for members.  
-**Synonyms:** billing period, invoice, bill
-
-| Column | Notes |
-|--------|-------|
-| `statement_no` | Primary key; use for period assignment instead of charge dates |
-| `member_no` | Foreign key to `Credit.member` |
-| `statement_dt` | Statement generation date |
-| `due_dt` | Payment due date |
-| `statement_amt` | Total statement balance; should reconcile to SUM(charges) - SUM(refunds) |
-
----
+| `charge_no` | Primary key. |
+| `member_no` | Foreign key to `Credit.member`. |
+| `provider_no` | Foreign key to `Credit.provider`. |
+| `category_no` | Foreign key to `Credit.category`. |
+| `charge_dt` | Transaction timestamp. **Do not use for statement period assignment; use `statement_no` instead.** |
+| `charge_amt` | Transaction amount in dollars. |
+| `charge_code` | Enumerated: `'RF'` = refund; empty/NULL = normal charge. |
+| `statement_no` | Foreign key to `Credit.statement`; use for period assignment. |
 
 ### `Credit.payment`
-**Meaning:** Member payments received against statements.  
-**Synonyms:** payment received, payment transaction
+Member payments against statements. Synonym: payment, remittance.
 
 | Column | Notes |
 |--------|-------|
-| `payment_no` | Primary key |
-| `member_no` | Foreign key to `Credit.member` |
-| `payment_dt` | Payment date |
-| `payment_amt` | Amount paid |
-| `statement_no` | Foreign key to `Credit.statement` |
+| `payment_no` | Primary key. |
+| `member_no` | Foreign key to `Credit.member`. |
+| `payment_dt` | Payment date. |
+| `payment_amt` | Payment amount in dollars. |
+| `statement_no` | Foreign key to `Credit.statement`. |
 
----
+### `Credit.statement`
+Monthly billing statements. Synonym: bill, invoice.
+
+| Column | Notes |
+|--------|-------|
+| `statement_no` | Primary key. Use for period assignment, not `charge_dt`. |
+| `member_no` | Foreign key to `Credit.member`. |
+| `statement_dt` | Statement generation date. |
+| `due_dt` | Payment due date. |
+| `statement_amt` | Total statement balance. Must reconcile to `SUM(charges) - SUM(refunds)`. Negative values flag data quality issues. |
+
+### `Credit.category`
+Merchant category codes. Synonym: merchant category, spending category.
+
+| Column | Notes |
+|--------|-------|
+| `category_no` | Primary key. |
+| `category_desc` | Enumerated: `'Travel'`, `'Meals'`, `'Lodging'`, `'Groceries'`, `'Entertainment'`, `'Clothing'`, `'Communication'`, `'Electronics'`, `'Home Supplies'`, `'Misc'`. |
 
 ### `Credit.provider`
-**Meaning:** Merchants/vendors accepting the credit card.  
-**Synonyms:** merchant, vendor, acquirer
+Merchants/service providers. Synonym: merchant, vendor.
 
 | Column | Notes |
 |--------|-------|
-| `provider_no` | Primary key |
-| `region_no` | Foreign key to `Credit.region` |
-| `issue_dt`, `expr_dt` | Provider agreement dates |
-
----
+| `provider_no` | Primary key. |
+| `provider_name` | Merchant name. |
+| `region_no` | Foreign key to `Credit.region`. |
+| `issue_dt` | Provider enrollment date. |
+| `expr_dt` | Provider expiration date. |
 
 ### `Credit.corporation`
-**Meaning:** Corporate entities sponsoring member accounts.  
-**Synonyms:** employer, sponsor, corporate account
+Corporate entities (employer/sponsor). Synonym: employer, sponsor.
 
 | Column | Notes |
 |--------|-------|
-| `corp_no` | Primary key |
-| `region_no` | Foreign key to `Credit.region` |
-| `expr_dt` | Corporate agreement expiration date |
-
----
+| `corp_no` | Primary key. |
+| `corp_name` | Corporation name. |
+| `region_no` | Foreign key to `Credit.region`. |
+| `expr_dt` | Dominant value `'2004-10-12 10:41:26'` (likely sentinel); treat as potentially unreliable. |
 
 ### `Credit.region`
-**Meaning:** Geographic regions for members, providers, and corporations.  
-**Synonyms:** geography, territory, location
+Geographic regions. Synonym: geography, territory.
 
 | Column | Notes |
 |--------|-------|
-| `region_no` | Primary key |
-| `region_name` | Enumerated values: Africa, China, Eastern Europea, Japan, Mid East / Sout, North American, Scandanavian, South American, Western Europea |
+| `region_no` | Primary key. |
+| `region_name` | Enumerated: `'North American'`, `'South American'`, `'Scandanavian'`, `'Western Europea'`, `'Eastern Europea'`, `'Africa'`, `'China'`, `'Japan'`, `'Mid East / Sout'`. |

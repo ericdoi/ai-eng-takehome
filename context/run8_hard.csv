@@ -1,0 +1,566 @@
+case_idx,split,passed,failure_type,gold_schema,gold_tables,schema_correct,tables_correct,guides_read,tool_sequence,prompt,gold_query,submitted_query,error,duration_seconds
+0,evals_hard,False,MISMATCH,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → run_sql → submit,What is the on-time performance percentage for each unique airline carrier? Round the percentage to 2 decimal places.,"SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_percentage FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND Diverted = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY UniqueCarrier","SELECT f.UniqueCarrier AS Carrier,
+       c.Description AS CarrierName,
+       ROUND(100.0 * SUM(CASE WHEN f.ArrDelayMinutes <= 15 AND f.ArrDelayMinutes IS NOT NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS OnTimePerformancePct
+FROM Airline.On_Time_On_Time_Performance_2016_1 f
+LEFT JOIN Airline.L_UNIQUE_CARRIERS c ON f.UniqueCarrier = c.Code
+WHERE f.Cancelled = 0
+  AND (f.WeatherDelay IS NULL OR f.WeatherDelay = 0)
+GROUP BY f.UniqueCarrier, c.Description
+ORDER BY f.UniqueCarrier",Results do not match,13.743972791358829
+1,evals_hard,True,NONE,Credit,Credit.charge|Credit.member,True,True,,find_schema → describe(Credit.member) → run_sql → submit,"Find the top 25 members (member_no, first name, last name, and net_charge_volume) by net charge volume, where refunds (charge_code 'RF') are subtracted from gross charges.","SELECT m.member_no, m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) as net_charge_volume FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_amt != 0.01 GROUP BY m.member_no, m.firstname, m.lastname ORDER BY net_charge_volume DESC LIMIT 25","SELECT m.member_no, m.firstname, m.lastname,
+       SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS net_charge_volume
+FROM Credit.member m
+JOIN Credit.charge c ON m.member_no = c.member_no
+GROUP BY m.member_no, m.firstname, m.lastname
+ORDER BY net_charge_volume DESC
+LIMIT 25",,6.540965749882162
+2,evals_hard,True,NONE,financial,financial.loan,True,True,,find_schema → run_sql → run_sql → submit,Find the default rate for loans.,"SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) as default_rate_pct FROM financial.loan","SELECT COUNT(CASE WHEN status IN ('C','D') THEN 1 END)::DOUBLE / NULLIF(COUNT(CASE WHEN status != 'B' THEN 1 END),0) AS default_rate
+FROM financial.loan",,4.433948791585863
+3,evals_hard,False,MISMATCH,ErgastF1,ErgastF1.drivers|ErgastF1.results,True,True,,find_schema → run_sql → submit,"Find the top 30 F1 drivers (first name and last name) by race completion rate, only including drivers with at least 50 race starts. Include total races, completed races, and completion rate.","SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 ELSE 0 END) as completed_races, CAST(SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as completion_rate FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId GROUP BY d.driverId, d.forename, d.surname HAVING COUNT(*) >= 50 ORDER BY completion_rate DESC LIMIT 30","SELECT d.forename AS first_name,
+       d.surname AS last_name,
+       COUNT(*) AS total_races,
+       SUM(CASE WHEN r.statusId = 1 THEN 1 ELSE 0 END) AS completed_races,
+       SUM(CASE WHEN r.statusId = 1 THEN 1 ELSE 0 END)::float / COUNT(*) AS completion_rate
+FROM ErgastF1.results r
+JOIN ErgastF1.drivers d ON r.driverId = d.driverId
+GROUP BY d.driverId, d.forename, d.surname
+HAVING COUNT(*) >= 50
+ORDER BY completion_rate DESC
+LIMIT 30",Results do not match,4.77642579190433
+4,evals_hard,False,MISMATCH,lahman_2014,lahman_2014.batting|lahman_2014.players,True,True,,find_schema → run_sql → submit,"Find the top 50 players by career batting average, only including players with at least 500 career at-bats.","SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2014.players p ON b.playerID = p.playerID WHERE b.AB >= 100 GROUP BY p.playerID, p.nameFirst, p.nameLast HAVING SUM(b.AB) >= 500 ORDER BY career_ba DESC LIMIT 50","SELECT p.playerID, p.nameFirst, p.nameLast, SUM(b.H) AS career_hits, SUM(b.AB) AS career_AB, SUM(b.H)::DOUBLE / NULLIF(SUM(b.AB),0) AS career_BA
+FROM lahman_2014.players p
+JOIN lahman_2014.batting b ON p.playerID = b.playerID
+GROUP BY p.playerID, p.nameFirst, p.nameLast
+HAVING SUM(b.AB) >= 500
+ORDER BY career_BA DESC
+LIMIT 50",Results do not match,4.603721624240279
+5,evals_hard,True,NONE,ErgastF1,ErgastF1.drivers|ErgastF1.results,True,True,,find_schema → run_sql → submit,Find the top 30 F1 drivers by podium finishes.,"SELECT d.forename, d.surname, COUNT(*) as podium_finishes FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId WHERE r.position IS NOT NULL AND r.position > 0 AND r.position <= 3 GROUP BY d.driverId, d.forename, d.surname ORDER BY podium_finishes DESC LIMIT 30","SELECT d.driverId, d.forename, d.surname, d.code, COUNT(*) AS podiums
+FROM ErgastF1.results r
+JOIN ErgastF1.drivers d ON r.driverId = d.driverId
+WHERE r.position IN (1,2,3) AND r.position IS NOT NULL AND r.position != 0
+GROUP BY d.driverId, d.forename, d.surname, d.code
+ORDER BY podiums DESC
+LIMIT 30",,3.6679871659725904
+6,evals_hard,True,NONE,CraftBeer,CraftBeer.beers|CraftBeer.breweries,True,True,,find_schema → describe(CraftBeer.breweries) → run_sql → submit,Identify the top 30 microbreweries with the smallest beer catalogs.,"SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery_id GROUP BY br.id, br.name HAVING COUNT(b.id) < 3 ORDER BY beer_count ASC, br.name LIMIT 30","SELECT br.id, br.name, br.city, br.state, COUNT(DISTINCT b.id) AS beer_count
+FROM CraftBeer.beers b
+JOIN CraftBeer.breweries br ON b.brewery_id = br.id
+GROUP BY br.id, br.name, br.city, br.state
+HAVING COUNT(DISTINCT b.id) < 3
+ORDER BY beer_count ASC, br.name ASC
+LIMIT 30",,5.727775916457176
+7,evals_hard,True,NONE,world,world.Country|world.CountryLanguage,True,True,,find_schema → describe(world.Country) → describe(world.CountryLanguage) → run_sql → run_sql → submit,Find country names where the sum of language percentages exceeds 100% due to multilingualism.,SELECT co.Name FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode GROUP BY co.Name HAVING SUM(cl.Percentage) > 100,"SELECT c.Name
+FROM world.Country c
+JOIN world.CountryLanguage cl ON c.Code = cl.CountryCode
+GROUP BY c.Name
+HAVING SUM(cl.Percentage) > 100
+ORDER BY c.Name",,6.6673185005784035
+8,evals_hard,False,MISMATCH,CraftBeer,CraftBeer.beers,True,True,,find_schema → run_sql → submit,"For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate average IBU by style.","SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style","SELECT 
+  CASE 
+    WHEN style LIKE '%IPA%' OR style LIKE '%India Pale Ale%' THEN 'IPA'
+    WHEN style LIKE '%Stout%' OR style LIKE '%Porter%' THEN 'Stout/Porter'
+    WHEN style LIKE '%Lager%' OR style LIKE '%Pilsner%' OR style LIKE '%Pilsener%' THEN 'Lager/Pilsner'
+    WHEN style LIKE '%Hefeweizen%' OR style LIKE '%Witbier%' OR style LIKE '%Wheat%' THEN 'Wheat'
+    WHEN style LIKE '%Sour%' OR style LIKE '%Wild%' THEN 'Sour'
+    ELSE 'Other'
+  END AS style_norm,
+  AVG(COALESCE(ibu, 20)) AS avg_ibu
+FROM CraftBeer.beers
+GROUP BY style_norm
+ORDER BY avg_ibu DESC;",Results do not match,6.2178380424156785
+9,evals_hard,True,NONE,Chess,Chess.game|Chess.opening,True,True,,find_schema → run_sql → run_sql → submit,"Calculate win rates for White players (with at least 5 games). Return the 30 players with the highest win rates, ordered by win rate descending.","SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY g.white HAVING COUNT(*) >= 5 ORDER BY win_rate DESC LIMIT 30","SELECT g.white,
+       COUNT(*) AS total_games,
+       SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS wins,
+       SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END)::FLOAT / COUNT(*) AS win_rate
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE NOT (o.name LIKE '%French%' OR g.opening LIKE '%French%')
+  AND NOT (o.name LIKE '%Sicilian%' OR g.opening LIKE '%Sicilian%')
+GROUP BY g.white
+HAVING COUNT(*) >= 5
+ORDER BY win_rate DESC
+LIMIT 30;",,7.569764541462064
+10,evals_hard,True,NONE,lahman_2014,lahman_2014.batting|lahman_2014.players,True,True,,find_schema → run_sql → submit,"Find the top 10 batters (name, year) by batting average (H/AB).","SELECT p.nameFirst, p.nameLast, b.yearID, CAST(b.H AS REAL) / b.AB as batting_avg FROM lahman_2014.batting b JOIN lahman_2014.players p ON b.playerID = p.playerID WHERE b.AB >= 100 ORDER BY batting_avg DESC LIMIT 10","SELECT p.nameFirst, p.nameLast, b.yearID, (b.H::DOUBLE / NULLIF(b.AB,0)) AS batting_average
+FROM lahman_2014.players p
+JOIN lahman_2014.batting b ON p.playerID = b.playerID
+WHERE b.AB >= 100
+ORDER BY batting_average DESC
+LIMIT 10",,4.4969217497855425
+11,evals_hard,False,MISMATCH,lahman_2014,lahman_2014.pitching|lahman_2014.players,True,True,,find_schema → run_sql → submit,"Find the top 50 starting pitchers by games started, showing their season statistics. I want to see the player's first and last name, the year, the games started, the innings pitched, and the earned runs.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.GS > 0 AND pi.IPouts >= 150 ORDER BY pi.GS DESC LIMIT 50","SELECT p.nameFirst, p.nameLast, pi.yearID AS year, pi.GS AS games_started,
+       pi.IPouts/3.0 AS innings_pitched,
+       pi.ER AS earned_runs
+FROM lahman_2014.players p
+JOIN lahman_2014.pitching pi ON p.playerID = pi.playerID
+WHERE pi.IPouts >= 150
+ORDER BY pi.GS DESC
+LIMIT 50",Results do not match,4.79315899964422
+12,evals_hard,False,MISMATCH,CraftBeer,CraftBeer.beers|CraftBeer.breweries,True,True,,find_schema → list_tables(CraftBeer) → describe(CraftBeer.beers) → describe(CraftBeer.breweries) → run_sql → run_sql → run_sql → run_sql → run_sql → submit,"Find beers with 'extreme' bitterness. Return the beer name, IBU, style, and brewery name.","SELECT b.name as beer_name, b.ibu, b.style, br.name as brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.ibu > 100","SELECT b.name AS beer_name,
+       b.ibu,
+       b.style,
+       br.name AS brewery_name
+FROM CraftBeer.beers b
+LEFT JOIN CraftBeer.breweries br ON b.brewery_id = br.id
+WHERE b.ibu >= (
+    SELECT quantile(ibu, 0.95) FROM CraftBeer.beers WHERE ibu IS NOT NULL
+)
+ORDER BY b.ibu DESC",Results do not match,10.431032874621451
+13,evals_hard,False,MISMATCH,financial,financial.account|financial.trans,True,False,,find_schema → describe(financial.trans) → run_sql → submit,"Find the top 30 accounts by total absolute transaction volume, excluding legacy transactions?","SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id = t.account_id WHERE (t.k_symbol IS NULL OR t.k_symbol != 'UROK') AND t.date >= '1995-01-01' GROUP BY a.account_id ORDER BY total_volume DESC LIMIT 30","SELECT account_id,
+       SUM(ABS(amount)) AS total_abs_volume
+FROM financial.trans
+WHERE date >= '1995-01-01'
+GROUP BY account_id
+ORDER BY total_abs_volume DESC
+LIMIT 30",Results do not match,5.526419040746987
+14,evals_hard,True,NONE,Credit,Credit.charge|Credit.provider,True,True,,find_schema → run_sql → submit,Find providers with fewer than 100 total charges that should be aggregated as 'Long tail providers'. I want to see the provider number and the charge count.,"SELECT p.provider_no, COUNT(*) as charge_count FROM Credit.charge c JOIN Credit.provider p ON c.provider_no = p.provider_no WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY p.provider_no HAVING COUNT(*) < 100","SELECT p.provider_no,
+       COUNT(*) AS charge_count,
+       'Long tail provider' AS provider_category
+FROM Credit.charge c
+JOIN Credit.provider p ON c.provider_no = p.provider_no
+GROUP BY p.provider_no
+HAVING COUNT(*) < 100
+ORDER BY charge_count DESC",,4.654135582968593
+15,evals_hard,False,MISMATCH,ErgastF1,ErgastF1.constructors|ErgastF1.races|ErgastF1.results,True,False,,find_schema → find_schema → run_sql → run_sql → submit,Calculate total points by constructor and year for each season from when points systems became comparable.,"SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.constructors c ON r.constructorId = c.constructorId JOIN ErgastF1.races ra ON r.raceId = ra.raceId WHERE r.position IS NOT NULL AND r.position > 0 AND ra.year >= 2010 GROUP BY c.constructorId, c.name, ra.year","SELECT c.constructorId,
+       c.constructorRef,
+       ra.year,
+       SUM(cr.points) AS total_points
+FROM ErgastF1.constructorResults cr
+JOIN ErgastF1.races ra ON cr.raceId = ra.raceId
+JOIN ErgastF1.constructors c ON cr.constructorId = c.constructorId
+WHERE ra.year >= 2010
+GROUP BY c.constructorId, c.constructorRef, ra.year
+ORDER BY ra.year, total_points DESC",Results do not match,9.687943957746029
+16,evals_hard,False,MISMATCH,CraftBeer,CraftBeer.beers|CraftBeer.breweries,True,True,,find_schema → describe(CraftBeer.breweries) → describe(CraftBeer.beers) → run_sql → run_sql → submit,"List 'high-gravity' beers along with their brewery information and abv. Note: ABV is stored as a decimal (e.g., 0.095 for 9.5%).","SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv >= 0.095 ORDER BY b.abv DESC","SELECT b.id AS beer_id,
+       b.name AS beer_name,
+       b.abv,
+       br.id AS brewery_id,
+       br.name AS brewery_name,
+       br.city,
+       br.state
+FROM CraftBeer.beers b
+LEFT JOIN CraftBeer.breweries br ON b.brewery_id = br.id
+WHERE b.abv >= 0.095",Results do not match,6.1678299168124795
+17,evals_hard,True,NONE,employee,employee.departments|employee.dept_emp|employee.dept_manager,True,True,,find_schema → run_sql → submit,"Calculate the current headcount by department based on their current department assignment, counting each employee only once based on their most recent department assignment. Be sure to return departments by name, not id.","SELECT d.dept_name, COUNT(DISTINCT de.emp_no) as headcount FROM employee.dept_emp de JOIN employee.departments d ON de.dept_no = d.dept_no WHERE de.to_date = '9999-01-01' AND de.emp_no NOT IN (SELECT emp_no FROM employee.dept_manager WHERE to_date = '9999-01-01') GROUP BY d.dept_name","WITH latest_dept AS (
+  SELECT de.emp_no, de.dept_no,
+         ROW_NUMBER() OVER (PARTITION BY de.emp_no ORDER BY de.from_date DESC) AS rn
+  FROM employee.dept_emp de
+  WHERE de.to_date = '9999-01-01'
+)
+SELECT d.dept_name,
+       COUNT(*) AS headcount
+FROM latest_dept ld
+JOIN employee.departments d ON ld.dept_no = d.dept_no
+JOIN employee.employees e ON ld.emp_no = e.emp_no
+WHERE ld.rn = 1
+  AND e.emp_no NOT IN (
+    SELECT emp_no FROM employee.dept_manager WHERE to_date = '9999-01-01'
+  )
+GROUP BY d.dept_name
+ORDER BY d.dept_name;",,6.065710875205696
+18,evals_hard,False,MISMATCH,world,world.Country,False,False,,find_schema → run_sql → describe(nations.stat) → submit,"Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclude countries with population = 0. Show their name, population, and gross national product.","SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0","SELECT c.country AS country_name, s.popabs AS population, s.GNP AS gross_national_product FROM nations.country c LEFT JOIN nations.stat s ON c.country_id = s.country_id WHERE s.popabs > 0 AND s.popabs < 100000",Results do not match,5.042847917415202
+19,evals_hard,False,MISMATCH,Credit,Credit.charge|Credit.member,True,True,,find_schema → list_tables(Credit) → describe(Credit.member) → run_sql → describe(Credit.charge) → describe(Credit.statement) → find_schema → find_schema → find_schema → describe(Credit.member) → run_sql → submit,"Find the top 50 member-quarters by charge count. I want to see the member's first and last name, the statement number, the charge count, and the total charges.","SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY m.member_no, m.firstname, m.lastname, c.statement_no ORDER BY charge_count DESC LIMIT 50","SELECT m.firstname,
+       m.lastname,
+       MIN(s.statement_no) AS statement_no,
+       DATE_TRUNC('quarter', s.statement_dt) AS quarter_start,
+       COUNT(c.charge_no) AS charge_count,
+       SUM(c.charge_amt) AS total_charges
+FROM Credit.member m
+JOIN Credit.charge c ON m.member_no = c.member_no
+JOIN Credit.statement s ON c.statement_no = s.statement_no
+WHERE c.charge_code != 'RF'
+  AND c.charge_amt >= 5.0
+  AND c.charge_amt != 0.01
+GROUP BY m.member_no, m.firstname, m.lastname, quarter_start
+ORDER BY charge_count DESC
+LIMIT 50",Results do not match,18.468370208516717
+20,evals_hard,True,NONE,financial,financial.account|financial.district,True,True,,find_schema → run_sql → submit,"Find district names (A2) with fewer than 50 accounts that should be aggregated as 'Other' for reporting, as well as their account counts.","SELECT d.A2 as district_name, COUNT(a.account_id) as account_count FROM financial.district d LEFT JOIN financial.account a ON d.district_id = a.district_id GROUP BY d.district_id, d.A2 HAVING COUNT(a.account_id) < 50","SELECT d.A2 AS district_name,
+       COUNT(a.account_id) AS account_count
+FROM financial.account a
+JOIN financial.district d ON a.district_id = d.district_id
+GROUP BY d.A2
+HAVING COUNT(a.account_id) < 50
+ORDER BY account_count DESC",,6.064701874740422
+21,evals_hard,False,MISMATCH,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → run_sql → submit,Find all origin/destination airport pairs that are thin routes. How many such pairs are there?,"SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL GROUP BY Origin, Dest HAVING COUNT(*) < 50) thin_routes","SELECT Origin, Dest, COUNT(*) OVER () AS total_thin_pairs
+FROM (
+  SELECT Origin, Dest
+  FROM Airline.On_Time_On_Time_Performance_2016_1
+  GROUP BY Origin, Dest
+  HAVING COUNT(*) < 50
+) t
+ORDER BY Origin, Dest",Results do not match,6.889204874634743
+22,evals_hard,True,NONE,Chess,Chess.game|Chess.opening,True,True,,find_schema → run_sql → submit,Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in opening analysis.,"SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE g.whiteElo IS NOT NULL AND g.BlackElo IS NOT NULL AND ABS(g.whiteElo - g.BlackElo) > 400 AND o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%'","SELECT g.game_id,
+       o.name AS opening_name,
+       g.white,
+       g.black,
+       g.whiteElo,
+       g.BlackElo,
+       ABS(g.whiteElo - g.BlackElo) AS rating_diff,
+       0.5 AS weight
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE ABS(g.whiteElo - g.BlackElo) > 400
+  AND g.whiteElo IS NOT NULL AND g.BlackElo IS NOT NULL
+  AND NOT (o.name LIKE '%French%' OR g.opening LIKE '%French%')
+  AND NOT (o.name LIKE '%Sicilian%' OR g.opening LIKE '%Sicilian%');",,5.673523582518101
+23,evals_hard,True,NONE,CraftBeer,CraftBeer.beers,True,True,,find_schema → run_sql → submit,Count the number of beers missing IBU data that should be flagged for data quality analysis.,SELECT COUNT(*) as missing_ibu_count FROM CraftBeer.beers b WHERE b.ibu IS NULL,SELECT COUNT(*) AS missing_ibu_beer_count FROM CraftBeer.beers WHERE ibu IS NULL,,3.2943114172667265
+24,evals_hard,True,NONE,employee,employee.employees|employee.salaries,True,True,,find_schema → run_sql → run_sql → submit,Compare current average salaries between 'Legacy' and 'Recent' workforce.,"SELECT CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END as cohort, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE s.to_date = '9999-01-01' GROUP BY CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END HAVING COUNT(*) >= 10","SELECT CASE WHEN e.hire_date < DATE '1990-01-01' THEN 'Legacy' ELSE 'Recent' END AS workforce_type,
+       AVG(s.salary) AS avg_salary
+FROM employee.employees e
+JOIN employee.salaries s ON e.emp_no = s.emp_no
+WHERE s.to_date = DATE '9999-01-01'
+GROUP BY workforce_type",,7.0948368748649955
+25,evals_hard,False,MISMATCH,Credit,Credit.charge,True,True,,find_schema → run_sql → run_sql → run_sql → describe(Credit.charge) → list_tables(Credit) → describe(Credit.category) → find_schema → list_tables(ConsumerExpenditures) → describe(Credit.category) → find_schema → run_sql → submit,"Group charges by spending type. Show the spending_type, charge_count, and total_amount.","SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionary' ELSE 'Other' END as spending_type, COUNT(*) as charge_count, SUM(c.charge_amt) as total_amount FROM Credit.charge c WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionary' ELSE 'Other' END","SELECT 
+  CASE 
+    WHEN c.category_no BETWEEN 1 AND 10 THEN 'essential'
+    WHEN c.category_no BETWEEN 11 AND 20 THEN 'discretionary'
+    ELSE 'other'
+  END AS spending_type,
+  COUNT(*) FILTER (WHERE c.charge_code != 'RF') AS charge_count,
+  SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS total_amount
+FROM Credit.charge c
+WHERE c.charge_amt >= 5.0
+  AND c.charge_amt != 0.01
+GROUP BY spending_type
+ORDER BY spending_type",Results do not match,25.049514040350914
+26,evals_hard,True,NONE,employee,employee.employees,True,True,,find_schema → run_sql → submit,How many employees are part of the 'legacy workforce'?,SELECT COUNT(*) as legacy_workforce_count FROM employee.employees WHERE hire_date < '1990-01-01',SELECT COUNT(*) AS legacy_workforce_employee_count FROM employee.employees WHERE hire_date < '1990-01-01',,4.940745875239372
+27,evals_hard,False,MISMATCH,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → submit,"Find the top route with the most severe delays. Only count completed flights. Show the origin, destination, and number of severe delays.","SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinutes > 180 AND DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY Origin, Dest ORDER BY severe_delay_count DESC LIMIT 1","SELECT Origin AS origin, Dest AS destination, COUNT(*) AS severe_delay_count
+FROM Airline.On_Time_On_Time_Performance_2016_1 f
+WHERE f.DepTime IS NOT NULL AND f.ArrTime IS NOT NULL
+  AND f.ArrDelayMinutes >= 180
+GROUP BY Origin, Dest
+ORDER BY severe_delay_count DESC
+LIMIT 1",Results do not match,4.765677833929658
+28,evals_hard,False,MISMATCH,ErgastF1,ErgastF1.constructors|ErgastF1.races|ErgastF1.results,True,False,,find_schema → run_sql → submit,"List each constructor-season combination where the constructor scored more than 100 total points, for seasons after when points systems became comparable. Show the constructor name, year, and total points. Aggregate points from individual race results.","SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors c ON r.constructorId = c.constructorId JOIN ErgastF1.races ra ON r.raceId = ra.raceId WHERE ra.year >= 2010 AND r.position IS NOT NULL AND r.position > 0 GROUP BY c.constructorId, c.name, ra.year HAVING SUM(r.points) > 100","SELECT c.constructorRef AS constructor_name,
+       r.year,
+       SUM(cr.points) AS total_points
+FROM ErgastF1.constructorResults cr
+JOIN ErgastF1.races r ON cr.raceId = r.raceId
+JOIN ErgastF1.constructors c ON cr.constructorId = c.constructorId
+WHERE r.year >= 2010
+GROUP BY c.constructorRef, r.year
+HAVING SUM(cr.points) > 100
+ORDER BY total_points DESC",Results do not match,4.712726667523384
+29,evals_hard,True,NONE,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → run_sql → submit,"What is the count of diverted flights by route (origin-destination pair), including only routes with more than 5 diversions?","SELECT Origin, Dest, COUNT(*) as diverted_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE Diverted = 1 GROUP BY Origin, Dest HAVING COUNT(*) > 5","SELECT Origin, Dest, COUNT(*) AS diverted_flights
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Diverted = 1
+GROUP BY Origin, Dest
+HAVING COUNT(*) > 5
+ORDER BY diverted_flights DESC",,4.659945208579302
+30,evals_hard,False,MISMATCH,employee,employee.departments|employee.dept_emp|employee.employees|employee.salaries,True,False,,find_schema → run_sql → submit,Find salary statistics for departments where salary statistics can be reported. Show me employee count and average salary by department name.,"SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JOIN employee.departments d ON de.dept_no = d.dept_no JOIN employee.employees e ON de.emp_no = e.emp_no JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE de.to_date = '9999-01-01' AND s.to_date = '9999-01-01' GROUP BY d.dept_name HAVING COUNT(DISTINCT e.emp_no) >= 5","WITH cur_dept AS (
+ SELECT de.emp_no, de.dept_no,
+        ROW_NUMBER() OVER (PARTITION BY de.emp_no ORDER BY de.from_date DESC) AS rn
+ FROM employee.dept_emp de
+ WHERE de.to_date = '9999-01-01'
+),
+cur_sal AS (
+ SELECT s.emp_no, s.salary
+ FROM employee.salaries s
+ WHERE s.to_date = '9999-01-01'
+),
+cur_mgr AS (
+ SELECT dm.emp_no
+ FROM employee.dept_manager dm
+ WHERE dm.to_date = '9999-01-01'
+)
+SELECT d.dept_name,
+       COUNT(DISTINCT cd.emp_no) AS employee_count,
+       AVG(cs.salary) AS avg_salary
+FROM cur_dept cd
+JOIN employee.departments d ON cd.dept_no = d.dept_no
+JOIN cur_sal cs ON cd.emp_no = cs.emp_no
+WHERE cd.rn = 1
+  AND cd.emp_no NOT IN (SELECT emp_no FROM cur_mgr)
+GROUP BY d.dept_name
+HAVING COUNT(DISTINCT cd.emp_no) >= 5
+ORDER BY d.dept_name;",Results do not match,7.035690624266863
+31,evals_hard,True,NONE,employee,employee.employees|employee.salaries,True,True,,find_schema → run_sql → submit,Compare average salaries by gender for current employees.,"SELECT e.gender, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE s.to_date = '9999-01-01' GROUP BY e.gender HAVING COUNT(*) >= 10","SELECT e.gender,
+       AVG(s.salary) AS avg_salary,
+       COUNT(*) AS employee_count
+FROM employee.employees e
+JOIN employee.dept_emp de
+  ON e.emp_no = de.emp_no
+  AND de.to_date = '9999-01-01'
+JOIN employee.salaries s
+  ON e.emp_no = s.emp_no
+  AND s.to_date = '9999-01-01'
+GROUP BY e.gender
+HAVING COUNT(*) >= 10
+ORDER BY e.gender",,6.068486167117953
+32,evals_hard,True,NONE,world,world.Country|world.CountryLanguage,True,True,,find_schema → run_sql → submit,Find countries (names and codes) with multiple official languages. Show the language count.,"SELECT co.Code, co.Name, COUNT(cl.Language) as language_count FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode WHERE cl.IsOfficial = 'T' GROUP BY co.Code, co.Name HAVING COUNT(cl.Language) > 1","SELECT c.Name, c.Code, COUNT(DISTINCT cl.Language) AS language_count
+FROM world.Country c
+JOIN world.CountryLanguage cl ON c.Code = cl.CountryCode
+WHERE cl.IsOfficial = 'T'
+GROUP BY c.Name, c.Code
+HAVING COUNT(DISTINCT cl.Language) > 1
+ORDER BY language_count DESC",,4.640256834216416
+33,evals_hard,True,NONE,Hockey,Hockey.Master|Hockey.Scoring,True,True,,find_schema → run_sql → submit,"Find the top 50 NHL players by career points, only including players with at least 5 seasons.","SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.Scoring s JOIN Hockey.Master m ON s.playerID = m.playerID WHERE s.lgID = 'NHL' GROUP BY s.playerID, m.firstName, m.lastName HAVING COUNT(DISTINCT s.year) >= 5 ORDER BY career_points DESC LIMIT 50","SELECT m.playerID, m.firstName, m.lastName, SUM(s.Pts) AS career_points, COUNT(DISTINCT s.year) AS seasons
+FROM Hockey.Master m
+JOIN Hockey.Scoring s ON m.playerID = s.playerID
+WHERE s.lgID = 'NHL'
+GROUP BY m.playerID, m.firstName, m.lastName
+HAVING COUNT(DISTINCT s.year) >= 5
+ORDER BY career_points DESC
+LIMIT 50",,6.035426541231573
+34,evals_hard,True,NONE,world,world.Country|world.CountryLanguage,True,True,,find_schema → run_sql → run_sql → submit,"List countries by continent with their dominant languages where language percentage exceeds 90%, showing whether each language is official.","SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode WHERE cl.Percentage > 90","SELECT c.Continent,
+       c.Name AS Country,
+       cl.Language,
+       cl.Percentage,
+       cl.IsOfficial
+FROM world.Country c
+JOIN world.CountryLanguage cl ON c.Code = cl.CountryCode
+WHERE cl.Percentage > 90
+ORDER BY c.Continent, c.Name",,5.756091250106692
+35,evals_hard,False,MISMATCH,financial,financial.account|financial.district|financial.loan,True,True,,find_schema → list_tables(financial) → run_sql → submit,"Show the region, loan count, total loan amount, and average loan amount for each loan classification. Label Prague as 'Prague' and other districts as 'Other Districts'.","SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, SUM(l.amount) as total_loan_amount, AVG(l.amount) as avg_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id GROUP BY CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END","SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END AS region,
+       CASE WHEN l.status = 'A' THEN 'Performing'
+            WHEN l.status = 'B' THEN 'Watch List'
+            WHEN l.status IN ('C','D') THEN 'Non-Performing'
+       END AS loan_classification,
+       COUNT(*) AS loan_count,
+       SUM(l.amount) AS total_loan_amount,
+       AVG(l.amount) AS average_loan_amount
+FROM financial.account a
+JOIN financial.loan l ON a.account_id = l.account_id
+JOIN financial.district d ON a.district_id = d.district_id
+GROUP BY region, loan_classification
+ORDER BY region, loan_classification;",Results do not match,8.748801290988922
+36,evals_hard,True,NONE,financial,financial.trans,True,True,,find_schema → describe(financial.trans) → run_sql → run_sql → run_sql → list_tables(financial) → describe(financial.account) → run_sql → find_schema → run_sql → submit,"Calculate transaction statistics (total deposits, total deposit amount, and average deposit amount).","SELECT COUNT(*) as total_deposits, SUM(amount) as total_deposit_amount, AVG(amount) as avg_deposit_amount FROM financial.trans WHERE type = 'PRIJEM' AND amount >= 1000 AND k_symbol IS NOT NULL AND k_symbol != 'UROK' AND date >= '1995-01-01'","SELECT COUNT(*) AS total_deposits,
+       SUM(amount) AS total_deposit_amount,
+       AVG(CASE WHEN amount >= 1000 THEN amount END) AS average_deposit_amount
+FROM financial.trans
+WHERE type = 'PRIJEM'
+  AND date >= DATE '1995-01-01'
+  AND k_symbol IS NOT NULL
+  AND k_symbol <> 'UROK';",,16.554986083880067
+37,evals_hard,True,NONE,lahman_2014,lahman_2014.batting|lahman_2014.halloffame|lahman_2014.players,True,True,,find_schema → run_sql → run_sql → submit,Find the names and years of the top 50 Hall of Fame players by career hits.,"SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN lahman_2014.players p ON h.hofID = p.hofID JOIN lahman_2014.batting b ON p.playerID = b.playerID WHERE h.inducted = 'Y' AND h.category = 'Player' GROUP BY p.playerID, p.nameFirst, p.nameLast, h.yearID HAVING SUM(b.AB) >= 100 ORDER BY career_hits DESC LIMIT 50","SELECT p.nameFirst, p.nameLast, h.yearID AS induction_year, SUM(b.H) AS career_hits
+FROM lahman_2014.players p
+JOIN lahman_2014.halloffame h ON p.hofID = h.hofID
+JOIN lahman_2014.batting b ON p.playerID = b.playerID
+WHERE h.inducted = 'Y' AND h.category = 'Player'
+GROUP BY p.playerID, p.nameFirst, p.nameLast, h.yearID
+ORDER BY career_hits DESC
+LIMIT 50",,6.301882665604353
+38,evals_hard,True,NONE,ErgastF1,ErgastF1.drivers|ErgastF1.results,True,True,,find_schema → run_sql → run_sql → run_sql → list_tables(ErgastF1) → describe(ErgastF1.drivers) → run_sql → run_sql → submit,Find the top 3 F1 rookie drivers ordered by their start count (highest first) then surname (descending).,"SELECT d.forename, d.surname, COUNT(*) as career_starts FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId GROUP BY d.driverId, d.forename, d.surname HAVING COUNT(*) < 20 ORDER BY career_starts DESC, d.surname DESC LIMIT 3","SELECT d.driverId,
+       d.forename,
+       d.surname,
+       COUNT(DISTINCT r.raceId) AS start_count
+FROM ErgastF1.results r
+JOIN ErgastF1.drivers d ON r.driverId = d.driverId
+GROUP BY d.driverId, d.forename, d.surname
+HAVING COUNT(DISTINCT r.raceId) < 20
+ORDER BY start_count DESC, d.surname DESC
+LIMIT 3",,16.46943687554449
+39,evals_hard,False,MISMATCH,Credit,Credit.charge,True,False,,find_schema → list_tables(financial) → describe(financial.trans) → find_schema → describe(financial.disp) → describe(financial.order) → describe(financial.account) → list_tables(financial) → find_schema → run_sql → list_tables(Credit) → describe(Credit.statement) → run_sql → describe(Credit.payment) → run_sql → submit,Find the top 50 statements by net amount.,"SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN c.charge_code = 'RF' THEN c.charge_amt ELSE 0 END) as refunds, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) - SUM(CASE WHEN c.charge_code = 'RF' THEN c.charge_amt ELSE 0 END) as net_amount FROM Credit.charge c WHERE c.charge_amt != 0.01 GROUP BY c.statement_no ORDER BY net_amount DESC LIMIT 50","SELECT s.statement_no,
+       s.member_no,
+       s.statement_dt,
+       s.due_dt,
+       s.statement_amt,
+       COALESCE(p.total_payment, 0) AS total_payment,
+       s.statement_amt - COALESCE(p.total_payment, 0) AS net_amount
+FROM Credit.statement AS s
+LEFT JOIN (
+    SELECT statement_no,
+           SUM(payment_amt) AS total_payment
+    FROM Credit.payment
+    GROUP BY statement_no
+) AS p ON s.statement_no = p.statement_no
+ORDER BY net_amount DESC
+LIMIT 50;",Results do not match,16.95676179137081
+40,evals_hard,True,NONE,Chess,Chess.game|Chess.opening,True,True,,find_schema → run_sql → run_sql → submit,"For each ECO code, show the game count, white wins, black wins, and draws. Only include ECO codes with at least 5 games.","SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHEN g.game_result = '0-1' THEN 1 ELSE 0 END) as black_wins, SUM(CASE WHEN g.game_result = '1/2-1/2' THEN 1 ELSE 0 END) as draws FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' AND g.ECO IS NOT NULL GROUP BY g.ECO HAVING COUNT(*) >= 5","SELECT g.ECO,
+       COUNT(*) AS game_count,
+       SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+       SUM(CASE WHEN g.game_result = '0-1' THEN 1 ELSE 0 END) AS black_wins,
+       SUM(CASE WHEN g.game_result = '1/2-1/2' THEN 1 ELSE 0 END) AS draws
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE NOT (o.name LIKE '%French%' OR g.opening LIKE '%French%')
+  AND NOT (o.name LIKE '%Sicilian%' OR g.opening LIKE '%Sicilian%')
+GROUP BY g.ECO
+HAVING COUNT(*) >= 5
+ORDER BY g.ECO",,6.589917290955782
+41,evals_hard,False,MISMATCH,Credit,Credit.charge|Credit.member,True,True,,find_schema → list_tables(Credit) → describe(Credit.member) → run_sql → find_schema → run_sql → submit,"Identify the top 30 members (first, last) by cumulative lifetime charges.","SELECT m.firstname, m.lastname, SUM(c.charge_amt) as lifetime_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_code != 'RF' AND c.charge_amt != 0.01 GROUP BY m.member_no, m.firstname, m.lastname ORDER BY lifetime_charges DESC LIMIT 30","SELECT m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS lifetime_charge
+FROM Credit.member m
+JOIN Credit.charge c ON m.member_no = c.member_no
+WHERE c.charge_amt >= 5.0 AND c.charge_amt != 0.01
+GROUP BY m.member_no, m.firstname, m.lastname
+ORDER BY lifetime_charge DESC
+LIMIT 30",Results do not match,13.021229499951005
+42,evals_hard,False,MISMATCH,lahman_2014,lahman_2014.pitching|lahman_2014.players,True,True,,find_schema → run_sql → run_sql → submit,"Find the top 50 non-reliever pitchers by ERA (Earned Run Average). Show the player's first and last name, the year, the innings pitched, and the ERA.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.IPouts >= 150 ORDER BY ERA ASC LIMIT 50","SELECT p.nameFirst,
+       p.nameLast,
+       pi.yearID AS year,
+       SUM(pi.IPouts) / 3.0 AS innings_pitched,
+       (SUM(pi.ER) * 9.0) / (SUM(pi.IPouts) / 3.0) AS ERA
+FROM lahman_2014.players p
+JOIN lahman_2014.pitching pi ON p.playerID = pi.playerID
+GROUP BY p.nameFirst, p.nameLast, pi.yearID
+HAVING SUM(pi.IPouts) >= 150
+ORDER BY ERA ASC
+LIMIT 50",Results do not match,8.044526250101626
+43,evals_hard,True,NONE,lahman_2014,lahman_2014.halloffame|lahman_2014.players,True,True,,find_schema → describe(lahman_2014.halloffame) → run_sql → submit,"Find the top 50 Hall of Fame voting results by BBWAA with at least 75% support, showing vote percentages. Give the player's first and last name, the year, the vote percentage.","SELECT p.nameFirst, p.nameLast, h.yearID, CAST(h.votes AS REAL) / h.ballots * 100 as vote_percentage FROM lahman_2014.halloffame h JOIN lahman_2014.players p ON h.hofID = p.hofID WHERE h.votedBy = 'BBWAA' AND h.ballots > 0 AND CAST(h.votes AS REAL) / h.ballots >= 0.75 ORDER BY vote_percentage DESC LIMIT 50","SELECT p.nameFirst, p.nameLast, h.yearID,
+       (h.votes::DOUBLE / h.ballots) * 100 AS vote_percentage
+FROM lahman_2014.players p
+JOIN lahman_2014.halloffame h ON p.hofID = h.hofID
+WHERE h.votedBy = 'BBWAA'
+  AND h.inducted = 'Y'
+  AND h.category = 'Player'
+  AND h.ballots > 0
+  AND (h.votes::DOUBLE / h.ballots) >= 0.75
+ORDER BY vote_percentage DESC
+LIMIT 50;",,6.6974879167973995
+44,evals_hard,False,MISMATCH,Hockey,Hockey.Master|Hockey.Scoring,True,True,,find_schema → run_sql → run_sql → submit,"Find the top 50 NHL players by average goals per season, only including players with at least 5 seasons.","SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT s.year) as seasons FROM Hockey.Scoring s JOIN Hockey.Master m ON s.playerID = m.playerID WHERE s.lgID = 'NHL' GROUP BY s.playerID, m.firstName, m.lastName HAVING COUNT(DISTINCT s.year) >= 5 ORDER BY avg_goals_per_season DESC LIMIT 50","SELECT m.playerID, m.firstName, m.lastName,
+       COUNT(DISTINCT s.year) AS seasons,
+       SUM(s.G) AS total_goals,
+       SUM(s.G)::DOUBLE / COUNT(DISTINCT s.year) AS avg_goals_per_season
+FROM Hockey.Master m
+JOIN Hockey.Scoring s ON m.playerID = s.playerID
+WHERE s.lgID = 'NHL' AND (s.PostGP IS NULL OR s.PostGP = 'NaN')
+GROUP BY m.playerID, m.firstName, m.lastName
+HAVING COUNT(DISTINCT s.year) >= 5
+ORDER BY avg_goals_per_season DESC
+LIMIT 50",Results do not match,6.578748541884124
+45,evals_hard,True,NONE,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → submit,"Analyze completed flights by day of week for January 2016. Give total flights, on-time flights, and average delay in minutes by day of week.","SELECT DayOfWeek, COUNT(*) as total_flights, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time_flights, AVG(ArrDelayMinutes) as avg_delay FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND Month = 1 GROUP BY DayOfWeek","SELECT f.DayOfWeek,
+       w.Description AS Weekday,
+       COUNT(*) AS total_flights,
+       SUM(CASE WHEN f.ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) AS on_time_flights,
+       AVG(f.ArrDelayMinutes) AS avg_delay_minutes
+FROM Airline.On_Time_On_Time_Performance_2016_1 f
+LEFT JOIN Airline.L_WEEKDAYS w ON f.DayOfWeek = w.Code
+WHERE f.Month = 1
+  AND f.DepTime IS NOT NULL
+  AND f.ArrTime IS NOT NULL
+GROUP BY f.DayOfWeek, w.Description
+ORDER BY f.DayOfWeek;",,5.183719417080283
+46,evals_hard,True,NONE,world,world.Country,True,True,,find_schema → describe(world.Country) → run_sql → run_sql → submit,Find the top 50 countries by population density. Show names and densities.,"SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population > 0 AND c.SurfaceArea > 0 ORDER BY population_density DESC LIMIT 50","SELECT c.Name, c.Population / c.SurfaceArea AS density
+FROM world.Country c
+WHERE c.SurfaceArea IS NOT NULL AND c.SurfaceArea > 0
+ORDER BY density DESC
+LIMIT 50",,6.397495166398585
+47,evals_hard,False,MISMATCH,lahman_2014,lahman_2014.pitching|lahman_2014.players,True,True,,find_schema → run_sql → run_sql → submit,"Find the top 8 pitchers by WHIP. Show the player's first and last name, the year, the innings pitched, and the WHIP.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.IPouts >= 150 ORDER BY WHIP ASC LIMIT 8","SELECT p.nameFirst, p.nameLast, pi.yearID AS year,
+       SUM(pi.IPouts) / 3.0 AS innings_pitched,
+       (SUM(pi.BB) + SUM(pi.H)) / (SUM(pi.IPouts) / 3.0) AS WHIP
+FROM lahman_2014.players p
+JOIN lahman_2014.pitching pi ON p.playerID = pi.playerID
+WHERE pi.IPouts >= 150  -- consider only pitchers with at least 50 innings (starters)
+GROUP BY p.nameFirst, p.nameLast, pi.yearID
+ORDER BY WHIP ASC
+LIMIT 8",Results do not match,10.512864916585386
+48,evals_hard,True,NONE,CraftBeer,CraftBeer.beers|CraftBeer.breweries,True,True,,find_schema → list_tables(CraftBeer) → describe(CraftBeer.beers) → describe(CraftBeer.breweries) → run_sql → run_sql → run_sql → run_sql → run_sql → run_sql → run_sql → submit,"Find the top 50 session beers by ABV. Note: ABV is stored as a decimal (e.g., 0.05 for 5%). I'd like to see their name, abv, style, and brewery name.","SELECT b.name as beer_name, b.abv, b.style, br.name as brewery FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv < 0.05 AND b.abv IS NOT NULL ORDER BY b.abv DESC LIMIT 50","SELECT b.name, b.abv, b.style, br.name AS brewery_name
+FROM CraftBeer.beers b
+LEFT JOIN CraftBeer.breweries br ON b.brewery_id = br.id
+WHERE b.abv <= 0.05
+ORDER BY b.abv DESC
+LIMIT 50",,12.490011957474053
+49,evals_hard,True,NONE,ErgastF1,ErgastF1.drivers|ErgastF1.lapTimes,True,True,,find_schema → run_sql → submit,Find the top 30 driver names by fastest lap time.,"SELECT d.forename, d.surname, MIN(lt.milliseconds) as fastest_lap_ms FROM ErgastF1.lapTimes lt JOIN ErgastF1.drivers d ON lt.driverId = d.driverId WHERE lt.milliseconds >= 60000 GROUP BY d.driverId, d.forename, d.surname ORDER BY fastest_lap_ms ASC LIMIT 30","SELECT d.forename, d.surname, MIN(lt.milliseconds) AS fastest_lap_ms
+FROM ErgastF1.lapTimes lt
+JOIN ErgastF1.drivers d ON lt.driverId = d.driverId
+WHERE lt.milliseconds >= 60000
+GROUP BY d.forename, d.surname
+ORDER BY fastest_lap_ms ASC
+LIMIT 30",,6.867490790784359
+50,evals_hard,True,NONE,Chess,Chess.game|Chess.opening,True,True,,find_schema → run_sql → submit,"Find the top three draw results in chess games, grouped by opening id and name.","SELECT o.name as opening_name, COUNT(*) as draw_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE g.game_result = '1/2-1/2' AND o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY o.opening_id, o.name ORDER BY draw_count DESC LIMIT 3","SELECT o.opening_id, o.name, COUNT(*) AS draw_count
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE g.game_result = '1/2-1/2'
+  AND NOT (o.name LIKE '%French%' OR g.opening LIKE '%French%')
+  AND NOT (o.name LIKE '%Sicilian%' OR g.opening LIKE '%Sicilian%')
+GROUP BY o.opening_id, o.name
+ORDER BY draw_count DESC
+LIMIT 3",,5.478528625331819
+51,evals_hard,True,NONE,CraftBeer,CraftBeer.beers|CraftBeer.breweries,True,True,,find_schema → list_tables(CraftBeer) → describe(CraftBeer.breweries) → run_sql → submit,Identify production breweries that should be analyzed separately.,"SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery_id GROUP BY br.id, br.name HAVING COUNT(b.id) > 20","SELECT br.id, br.name, br.city, br.state, COUNT(DISTINCT b.id) AS beer_count
+FROM CraftBeer.breweries br
+JOIN CraftBeer.beers b ON b.brewery_id = br.id
+GROUP BY br.id, br.name, br.city, br.state
+HAVING COUNT(DISTINCT b.id) > 20
+ORDER BY beer_count DESC",,5.284424167126417
+52,evals_hard,True,NONE,financial,financial.account|financial.district|financial.loan,True,False,,find_schema → describe(financial.loan) → describe(financial.account) → run_sql → submit,"Aggregate loan statistics for districts 70-77 as a single 'Eastern Region' entity, showing total loans and average loan amount for performing loans only.","SELECT 'Eastern Region' as region, COUNT(l.loan_id) as total_loans, AVG(l.amount) as avg_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id WHERE d.district_id BETWEEN 70 AND 77 AND l.status = 'A'","SELECT 'Eastern Region' AS district_label,
+       COUNT(*) AS total_loans,
+       AVG(l.amount) AS avg_loan_amount
+FROM financial.account a
+JOIN financial.loan l ON a.account_id = l.account_id
+WHERE a.district_id BETWEEN 70 AND 77
+  AND l.status = 'A';",,7.44126245751977
+53,evals_hard,True,NONE,imdb_MovieLens,imdb_MovieLens.u2base,True,True,,find_schema → run_sql → run_sql → submit,"Identify 'super users' by id in the movie ratings data, showing the number of ratings they've given.","SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000","SELECT u.userid, COUNT(*) AS rating_count
+FROM imdb_MovieLens.u2base u
+GROUP BY u.userid
+HAVING COUNT(*) > 1000
+ORDER BY rating_count DESC",,6.168494790792465
+54,evals_hard,True,NONE,world,world.City|world.Country,True,True,,find_schema → describe(world.City) → describe(world.Country) → run_sql → submit,"List the top 50 capital cities by population, along with their countries.","SELECT co.Name as country, ci.Name as capital_city, ci.Population FROM world.Country co JOIN world.City ci ON co.Capital = ci.ID WHERE ci.Population IS NOT NULL ORDER BY ci.Population DESC LIMIT 50","SELECT cy.Name AS capital_city, c.Name AS country, cy.Population FROM world.Country c LEFT JOIN world.City cy ON c.Capital = cy.ID WHERE cy.Population IS NOT NULL ORDER BY cy.Population DESC LIMIT 50",,5.721308000385761
+55,evals_hard,True,NONE,ErgastF1,ErgastF1.constructors|ErgastF1.drivers|ErgastF1.races|ErgastF1.results,True,True,,find_schema → describe(ErgastF1.constructors) → run_sql → run_sql → describe(ErgastF1.results) → describe(ErgastF1.drivers) → describe(ErgastF1.races) → run_sql → describe(ErgastF1.results) → describe(ErgastF1.results) → run_sql → describe(ErgastF1.results) → describe(ErgastF1.results) → describe(ErgastF1.results) → describe(ErgastF1.results) → run_sql → submit,"Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position comparisons where both drivers finished. Return raceId, year, constructor name, driver1 surname, driver2 surname, driver1_pos, and driver2_pos.","SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_pos, r2.position as driver2_pos FROM ErgastF1.results r1 JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId AND r1.constructorId = r2.constructorId AND r1.driverId < r2.driverId JOIN ErgastF1.drivers d1 ON r1.driverId = d1.driverId JOIN ErgastF1.drivers d2 ON r2.driverId = d2.driverId JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId JOIN ErgastF1.races ra ON r1.raceId = ra.raceId WHERE r1.position IS NOT NULL AND r2.position IS NOT NULL AND r1.position > 0 AND r2.position > 0 AND ra.year = 2015 AND c.name = 'Mercedes'","SELECT r1.raceId,
+       ra.year,
+       c.name AS constructor_name,
+       d1.surname AS driver1_surname,
+       d2.surname AS driver2_surname,
+       r1.position AS driver1_pos,
+       r2.position AS driver2_pos
+FROM ErgastF1.results r1
+JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId
+JOIN ErgastF1.races ra ON r1.raceId = ra.raceId
+JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId
+JOIN ErgastF1.drivers d1 ON r1.driverId = d1.driverId
+JOIN ErgastF1.drivers d2 ON r2.driverId = d2.driverId
+WHERE ra.year = 2015
+  AND c.name = 'Mercedes'
+  AND d1.surname = 'Hamilton'
+  AND d2.surname = 'Rosberg'
+  AND r1.position IS NOT NULL
+  AND r2.position IS NOT NULL
+  AND r2.constructorId = r1.constructorId
+ORDER BY ra.round",,18.977086457423866
+56,evals_hard,True,NONE,Accidents,Accidents.nesreca,True,True,,find_schema → run_sql → submit,"Count accidents by administrative unit, only for units with more than 100 accidents for statistical significance.","SELECT n.upravna_enota, COUNT(*) as accident_count FROM Accidents.nesreca n GROUP BY n.upravna_enota HAVING COUNT(*) > 100","SELECT u.id_upravna_enota,
+       u.ime_upravna_enota,
+       COUNT(*) AS accident_count
+FROM Accidents.nesreca n
+JOIN Accidents.upravna_enota u ON n.upravna_enota = u.id_upravna_enota
+WHERE n.klas_nesreca IS NOT NULL
+  AND n.vzrok_nesreca IS NOT NULL
+  AND n.tip_nesreca IS NOT NULL
+GROUP BY u.id_upravna_enota, u.ime_upravna_enota
+HAVING COUNT(*) > 100",,6.000065375119448
+57,evals_hard,False,MISMATCH,ErgastF1,ErgastF1.constructors|ErgastF1.results,True,True,,find_schema → run_sql → submit,Find the top 30 constructors with the highest number of races where at least two cars started.,"SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId AND r1.constructorId = r2.constructorId AND r1.resultId < r2.resultId JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId WHERE r1.grid > 0 AND r2.grid > 0 GROUP BY c.constructorId, c.name ORDER BY races_at_least_two_started DESC LIMIT 30","SELECT c.constructorId, c.constructorRef, COUNT(*) AS race_count
+FROM (
+  SELECT raceId, constructorId
+  FROM ErgastF1.results
+  GROUP BY raceId, constructorId
+  HAVING COUNT(DISTINCT driverId) = 2
+) rc
+JOIN ErgastF1.constructors c ON rc.constructorId = c.constructorId
+GROUP BY c.constructorId, c.constructorRef
+ORDER BY race_count DESC
+LIMIT 30",Results do not match,4.448912124149501
+58,evals_hard,True,NONE,Chess,Chess.game|Chess.opening,True,True,,find_schema → run_sql → submit,What are the top three openings by games played? Count games separately for each opening_id (do not deduplicate by name).,"SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY o.opening_id, o.name ORDER BY game_count DESC LIMIT 3","SELECT g.opening_id, o.name, COUNT(*) AS games_played
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE NOT (o.name LIKE '%French%' OR g.opening LIKE '%French%')
+  AND NOT (o.name LIKE '%Sicilian%' OR g.opening LIKE '%Sicilian%')
+GROUP BY g.opening_id, o.name
+ORDER BY games_played DESC
+LIMIT 3",,5.889672625809908
+59,evals_hard,False,MISMATCH,Airline,Airline.On_Time_On_Time_Performance_2016_1,True,True,,find_schema → run_sql → submit,"Show carrier performance with counts of on-time, moderately delayed, and severely delayed flights.","SELECT UniqueCarrier, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time, SUM(CASE WHEN ArrDelayMinutes > 15 AND ArrDelayMinutes <= 180 THEN 1 ELSE 0 END) as moderate_delays, SUM(CASE WHEN ArrDelayMinutes > 180 THEN 1 ELSE 0 END) as severe_delays FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY UniqueCarrier","SELECT f.UniqueCarrier,
+       COUNT(CASE WHEN f.ArrDelayMinutes <= 15 THEN 1 END) AS on_time_cnt,
+       COUNT(CASE WHEN f.ArrDelayMinutes > 15 AND f.ArrDelayMinutes < 180 THEN 1 END) AS moderate_cnt,
+       COUNT(CASE WHEN f.ArrDelayMinutes >= 180 THEN 1 END) AS severe_cnt
+FROM Airline.On_Time_On_Time_Performance_2016_1 f
+WHERE f.Cancelled = 0
+  AND f.DepTime IS NOT NULL AND f.ArrTime IS NOT NULL
+  AND (f.WeatherDelay IS NULL OR f.WeatherDelay = 0)
+GROUP BY f.UniqueCarrier
+ORDER BY f.UniqueCarrier",Results do not match,6.5492644580081105
+60,evals_hard,False,MISMATCH,Credit,Credit.charge,False,False,,find_schema → run_sql → run_sql → run_sql → describe(ccs.transactions_1k) → run_sql → submit,Calculate the average transaction value.,SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND charge_code != 'RF',SELECT AVG(Amount * Price) AS average_transaction_value FROM ccs.transactions_1k,Results do not match,7.71589941624552
+61,evals_hard,True,NONE,financial,financial.loan,True,True,,find_schema → run_sql → submit,"Calculate the loan portfolio size by status for each loan classification. Show the loan classification, count, and total amount.","SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-Performing' END as loan_classification, COUNT(*) as loan_count, SUM(amount) as total_amount FROM financial.loan GROUP BY CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-Performing' END","SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C','D') THEN 'Non-Performing' END AS loan_classification,
+       COUNT(*) AS loan_count,
+       SUM(amount) AS total_amount
+FROM financial.loan
+GROUP BY loan_classification
+ORDER BY loan_classification",,3.7518394999206066
+62,evals_hard,True,NONE,world,world.City|world.Country,True,True,,find_schema → describe(world.City) → run_sql → submit,List major cities along with their country information.,"SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN world.Country co ON ci.CountryCode = co.Code WHERE ci.Population > 2000000","SELECT cy.ID,
+       cy.Name AS CityName,
+       cy.District,
+       cy.Population AS CityPopulation,
+       c.Code AS CountryCode,
+       c.Name AS CountryName,
+       c.Continent,
+       c.Region,
+       c.Population AS CountryPopulation
+FROM world.City cy
+JOIN world.Country c ON cy.CountryCode = c.Code
+WHERE cy.Population > 2000000
+ORDER BY cy.Population DESC",,5.674171624705195
+63,evals_hard,False,AGENT_ERROR,financial,financial.account|financial.district|financial.loan,True,True,,find_schema → describe(financial.account) → describe(financial.district) → describe(financial.loan) → list_tables(financial) → run_sql → run_sql → run_sql → describe(financial.district) → describe(financial.disp) → run_sql → describe(financial.district) → run_sql → run_sql → list_tables(financial) → describe(financial.district) → describe(financial.district) → list_tables(financial) → describe(financial.district) → describe(financial.district) → describe(financial.district) → describe(financial.district) → describe(financial.district) → list_tables(financial) → describe(financial.district) → run_sql → list_tables(financial) → list_tables(financial) → describe(financial.district) → find_schema,What is the total amount of performing loans by district name?,"SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id WHERE l.status = 'A' AND d.district_id != 1 GROUP BY d.A2",,Agent error: Max iterations reached,32.55211720895022

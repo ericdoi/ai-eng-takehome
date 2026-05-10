@@ -1,244 +1,244 @@
 # Financial Schema Reference Guide
 
-## Schema Summary
-This schema contains Czech banking data with accounts, clients, dispositions, cards, loans, standing orders, and transaction history across multiple districts.
+## 1. Schema Summary
+
+The `financial` schema contains a Czech bank's operational data covering client accounts, loans, transactions, standing orders, payment cards, and geographic district attributes.
 
 ---
 
-## Join Paths
+## 2. Join Paths
 
-**Client to Account (via disposition):**
+**account → district** [OPTIONAL — display only]
 ```sql
-FROM financial.client c
-JOIN financial.disp d ON c.client_id = d.client_id
-JOIN financial.account a ON d.account_id = a.account_id
+FROM financial.account a
+JOIN financial.district d ON a.district_id = d.district_id
 ```
 
-**Account to Loan:**
+**account → client** (via disp) [REQUIRED]
+```sql
+FROM financial.account a
+JOIN financial.disp dp ON a.account_id = dp.account_id
+JOIN financial.client c ON dp.client_id = c.client_id
+```
+
+**account → loan** [REQUIRED]
 ```sql
 FROM financial.account a
 JOIN financial.loan l ON a.account_id = l.account_id
 ```
 
-**Account to Transactions:**
+**account → trans** [REQUIRED]
 ```sql
 FROM financial.account a
 JOIN financial.trans t ON a.account_id = t.account_id
 ```
 
-**Account to Cards (via disposition):**
+**account → order** [REQUIRED]
 ```sql
 FROM financial.account a
-JOIN financial.disp d ON a.account_id = d.account_id
-JOIN financial.card c ON d.disp_id = c.disp_id
+JOIN financial.order o ON a.account_id = o.account_id
 ```
 
-**Account to District:**
-```sql
-FROM financial.account a
-JOIN financial.district dist ON a.district_id = dist.district_id
-```
-
-**Client to District:**
+**client → card** (via disp) [REQUIRED]
 ```sql
 FROM financial.client c
-JOIN financial.district dist ON c.district_id = dist.district_id
+JOIN financial.disp dp ON c.client_id = dp.client_id
+JOIN financial.card cd ON dp.disp_id = cd.disp_id
+```
+
+**account owner only** (filter disp to single owner per account) [REQUIRED when isolating account owner]
+```sql
+FROM financial.account a
+JOIN financial.disp dp ON a.account_id = dp.account_id AND dp.type = 'OWNER'
+JOIN financial.client c ON dp.client_id = c.client_id
 ```
 
 ---
 
-## Business Rules as SQL
+## 3. Business Rules as SQL
 
-**Rule: Performing loans (exclude watch/non-performing):**
+### Loan Status
+
+- **IDENTIFY performing loans:** `WHERE status = 'A'` — rows matching this condition ARE performing loans
+- **IDENTIFY watch-list loans:** `WHERE status = 'B'` — rows matching this condition ARE watch-list loans
+- **IDENTIFY non-performing loans:** `WHERE status IN ('C', 'D')` — rows matching this condition ARE non-performing loans
+- **EXCLUDE non-performing from profitability:** `WHERE status NOT IN ('C', 'D')`
+- **EXCLUDE watch-list from default rate denominator:** `WHERE status != 'B'`
+
+**Combined status label mapping:**
 ```sql
-WHERE financial.loan.status = 'A'
+CASE
+    WHEN status = 'A' THEN 'Performing'
+    WHEN status = 'B' THEN 'Watch List'
+    WHEN status IN ('C', 'D') THEN 'Non-Performing'
+END AS loan_status_label
 ```
 
-**Rule: Watch list loans (exclude from default rate, include in portfolio):**
+**Default rate:**
 ```sql
-WHERE financial.loan.status = 'B'
-```
-
-**Rule: Non-performing loans (never count in profitability):**
-```sql
-WHERE financial.loan.status NOT IN ('C', 'D')
-```
-
-**Rule: Exclude legacy transactions (before 1995-01-01):**
-```sql
-WHERE financial.trans.date >= '1995-01-01'
-```
-
-**Rule: Exclude interest and uncategorized transactions from revenue:**
-```sql
-WHERE financial.trans.k_symbol NOT IN ('UROK', ' ')
-  AND financial.trans.k_symbol IS NOT NULL
-```
-
-**Rule: Micro-deposits (credit < 1000 units, exclude from average deposit):**
-```sql
-WHERE NOT (financial.trans.type = 'PRIJEM' AND financial.trans.amount < 1000)
-```
-
-**Rule: Prague district (always report separately):**
-```sql
-WHERE financial.district.district_id = 1
-```
-
-**Rule: Eastern Region (districts 70–77 aggregated):**
-```sql
-WHERE financial.district.district_id BETWEEN 70 AND 77
-```
-
-**Rule: Minimum district threshold (exclude districts with < 50 accounts):**
-```sql
-HAVING COUNT(DISTINCT financial.account.account_id) >= 50
+-- default_rate = non-performing count / eligible portfolio count (excludes Watch List)
+COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END)
+  / NULLIF(COUNT(CASE WHEN status != 'B' THEN 1 END), 0)
+  AS default_rate
+FROM financial.loan
 ```
 
 ---
 
-## Synonym Glossary
+### Transaction Handling
 
-| Term | Schema Reference |
-|------|------------------|
-| performing loan | `financial.loan.status = 'A'` |
-| watch list loan | `financial.loan.status = 'B'` |
-| defaulted/non-performing loan | `financial.loan.status IN ('C', 'D')` |
-| account owner | `financial.disp.type = 'OWNER'` |
-| account disponent | `financial.disp.type = 'DISPONENT'` |
-| credit/deposit | `financial.trans.type = 'PRIJEM'` |
-| withdrawal | `financial.trans.type = 'VYBER'` |
-| outgoing payment | `financial.trans.type = 'VYDAJ'` |
-| card transfer | `financial.trans.operation = 'PREVOD NA UCET'` |
-| card withdrawal | `financial.trans.operation = 'VYBER KARTOU'` |
-| deposit | `financial.trans.operation = 'VKLAD'` |
-| interest transaction | `financial.trans.k_symbol = 'UROK'` |
-| fee-based income | `financial.trans.k_symbol IN ('POJISTNE', 'SIPO', 'SLUZBY')` |
-| pension/salary | `financial.trans.k_symbol = 'DUCHOD'` |
-| loan payment | `financial.trans.k_symbol = 'UVER'` |
-| monthly fee account | `financial.account.frequency = 'POPLATEK MESICNE'` |
-| weekly fee account | `financial.account.frequency = 'POPLATEK TYDNE'` |
-| per-transaction fee account | `financial.account.frequency = 'POPLATEK PO OBRATU'` |
-| Prague | `financial.district.A3 = 'Prague'` |
-| central Bohemia | `financial.district.A3 = 'central Bohemia'` |
+- **EXCLUDE interest/unclassified from revenue:** `WHERE k_symbol NOT IN ('UROK') AND k_symbol IS NOT NULL`
+- **EXCLUDE legacy transactions from balance calculations:** `WHERE date >= '1995-01-01'`
+- **IDENTIFY micro-deposits:** `WHERE type = 'PRIJEM' AND amount < 1000` — rows matching this condition ARE micro-deposits
+- **EXCLUDE micro-deposits from average deposit calculations:** `WHERE type = 'PRIJEM' AND amount >= 1000`
 
 ---
 
-## Table Reference
+### District Aggregations
+
+- **IDENTIFY Prague (always separate):** `WHERE district_id = 1`
+- **IDENTIFY Eastern Region:** `WHERE district_id BETWEEN 70 AND 77`
+
+```sql
+-- Eastern Region aggregation
+CASE
+    WHEN district_id = 1 THEN 'Prague'
+    WHEN district_id BETWEEN 70 AND 77 THEN 'Eastern Region'
+    ELSE d.A2
+END AS district_label
+```
+
+- **EXCLUDE small districts from district-level metrics:**
+```sql
+-- Use "Other" for districts with fewer than 50 accounts
+SELECT
+    CASE WHEN COUNT(a.account_id) < 50 THEN 'Other' ELSE CAST(a.district_id AS VARCHAR) END AS district_group
+FROM financial.account a
+GROUP BY a.district_id
+```
+
+---
+
+## 4. Synonym Glossary
+
+| Common Term | Schema Mapping |
+|---|---|
+| "account holder" / "account owner" | `financial.disp.type = 'OWNER'` |
+| "authorized user" / "secondary user" | `financial.disp.type = 'DISPONENT'` |
+| "region" / "area" | `financial.district.A3` |
+| "district name" | `financial.district.A2` |
+| "card holder" | `financial.client` joined via `financial.disp` → `financial.card` |
+| "credit card type" | `financial.card.type` (`classic`, `gold`, `junior`) |
+| "deposit" / "credit transaction" | `financial.trans WHERE type = 'PRIJEM'` |
+| "withdrawal" | `financial.trans WHERE type IN ('VYBER', 'VYDAJ')` |
+| "standing order" / "payment order" | `financial.order` |
+| "loan default" | `financial.loan WHERE status IN ('C', 'D')` |
+| "performing loan" | `financial.loan WHERE status = 'A'` |
+| "interest income" | `financial.trans WHERE k_symbol = 'UROK'` |
+| "insurance payment" | `financial.trans WHERE k_symbol = 'POJISTNE'` or `financial.order WHERE k_symbol = 'POJISTNE'` |
+| "statement frequency" / "billing cycle" | `financial.account.frequency` |
+| "monthly statement" | `financial.account WHERE frequency = 'POPLATEK MESICNE'` |
+| "weekly statement" | `financial.account WHERE frequency = 'POPLATEK TYDNE'` |
+| "transaction-triggered statement" | `financial.account WHERE frequency = 'POPLATEK PO OBRATU'` |
+| "age" / "birth year" | `financial.client.birth_date` (sentinel value `'1970-12-13'` = possible data artifact) |
+| "Prague" | `financial.district WHERE district_id = 1` |
+| "Eastern Region" | `financial.district WHERE district_id BETWEEN 70 AND 77` |
+| "micro-deposit" | `financial.trans WHERE type = 'PRIJEM' AND amount < 1000` |
+
+---
+
+## 5. Table Reference
 
 ### `financial.account`
-Account master records with fee structure and opening date.
+Standing bank accounts. One account may have multiple clients linked via `financial.disp`.
 
 | Column | Notes |
-|--------|-------|
-| `account_id` | Primary key; links to `disp`, `loan`, `trans`, `order` |
-| `district_id` | Foreign key to `financial.district` |
-| `frequency` | Fee billing model: `POPLATEK MESICNE` (monthly), `POPLATEK TYDNE` (weekly), `POPLATEK PO OBRATU` (per-transaction) |
+|---|---|
+| `frequency` | Statement/fee billing cycle. Values: `'POPLATEK MESICNE'` (monthly), `'POPLATEK TYDNE'` (weekly), `'POPLATEK PO OBRATU'` (per-transaction) |
 | `date` | Account opening date |
 
 ---
 
-### `financial.client`
-Individual clients with demographics.
+### `financial.card`
+Payment cards issued to disposers (not directly to accounts).
 
 | Column | Notes |
-|--------|-------|
-| `client_id` | Primary key; links to `disp` |
-| `gender` | `F` or `M` |
-| `birth_date` | Date of birth |
-| `district_id` | Foreign key to `financial.district` |
+|---|---|
+| `disp_id` | FK to `financial.disp` — card belongs to a specific client–account relationship, not the account alone |
+| `type` | Card tier: `'classic'`, `'gold'`, `'junior'` |
+| `issued` | Card issue date |
+
+---
+
+### `financial.client`
+Individual bank customers.
+
+| Column | Notes |
+|---|---|
+| `gender` | `'F'` = female, `'M'` = male |
+| `birth_date` | Sentinel value `'1970-12-13'` may indicate missing/epoch-zero data — treat with caution |
+| `district_id` | Client's home district; may differ from their account's `district_id` |
 
 ---
 
 ### `financial.disp`
-Disposition: relationship between client and account (ownership/authorization).
+Junction table linking clients to accounts; also the anchor for card issuance.
 
 | Column | Notes |
-|--------|-------|
-| `disp_id` | Primary key; links to `card` |
-| `client_id` | Foreign key to `financial.client` |
-| `account_id` | Foreign key to `financial.account` |
-| `type` | `OWNER` (account holder) or `DISPONENT` (authorized user) |
-
----
-
-### `financial.card`
-Payment cards issued to dispositions.
-
-| Column | Notes |
-|--------|-------|
-| `card_id` | Primary key |
-| `disp_id` | Foreign key to `financial.disp` |
-| `type` | `classic`, `gold`, or `junior` |
-| `issued` | Card issuance date |
-
----
-
-### `financial.loan`
-Loan contracts with repayment status.
-
-| Column | Notes |
-|--------|-------|
-| `loan_id` | Primary key |
-| `account_id` | Foreign key to `financial.account` |
-| `date` | Loan origination date |
-| `amount` | Principal amount |
-| `duration` | Loan term in months |
-| `payments` | Monthly payment amount |
-| `status` | `A` (performing), `B` (watch list), `C` (non-performing), `D` (defaulted). **Business rule: exclude C/D from profitability metrics.** |
-
----
-
-### `financial.trans`
-Individual transactions on accounts.
-
-| Column | Notes |
-|--------|-------|
-| `trans_id` | Primary key |
-| `account_id` | Foreign key to `financial.account` |
-| `date` | Transaction date. **Business rule: exclude dates before 1995-01-01.** |
-| `type` | `PRIJEM` (credit), `VYBER` (withdrawal), `VYDAJ` (outgoing payment) |
-| `operation` | Transaction method: `VKLAD` (deposit), `VYBER` (ATM withdrawal), `VYBER KARTOU` (card withdrawal), `PREVOD NA UCET` (transfer to account), `PREVOD Z UCTU` (transfer from account) |
-| `amount` | Transaction amount |
-| `balance` | Account balance after transaction |
-| `k_symbol` | Transaction category: `UROK` (interest), `POJISTNE` (insurance), `SIPO` (standing order), `UVER` (loan payment), `SLUZBY` (fees), `DUCHOD` (pension), `SANKC. UROK` (penalty interest), or space/NULL. **Business rule: exclude UROK and NULL from revenue calculations; exclude micro-deposits (PRIJEM < 1000) from averages.** |
-| `bank` | Counterparty bank code (2-letter): `AB`, `CD`, `EF`, `GH`, `IJ`, `KL`, `MN`, `OP`, `QR`, `ST`, `UV`, `WX`, `YZ` |
-| `account` | Counterparty account number |
-
----
-
-### `financial.order`
-Standing orders (recurring transfers).
-
-| Column | Notes |
-|--------|-------|
-| `order_id` | Primary key |
-| `account_id` | Foreign key to `financial.account` |
-| `bank_to` | Destination bank code (2-letter) |
-| `account_to` | Destination account number |
-| `amount` | Transfer amount |
-| `k_symbol` | Purpose: `SIPO` (standing order), `UVER` (loan), `POJISTNE` (insurance), `LEASING` (lease), or space/NULL |
+|---|---|
+| `type` | `'OWNER'` = primary account holder (one per account); `'DISPONENT'` = authorized secondary user (zero or more per account) |
 
 ---
 
 ### `financial.district`
-Geographic and demographic district metadata.
+Geographic and socioeconomic attributes of Czech districts. Column names are opaque codes.
 
 | Column | Notes |
-|--------|-------|
-| `district_id` | Primary key; 1 = Prague (report separately per business rule); 70–77 = Eastern Region (aggregate per business rule) |
-| `A2` | District name |
-| `A3` | Region: `Prague`, `central Bohemia`, `east Bohemia`, `north Bohemia`, `north Moravia`, `south Bohemia`, `south Moravia`, `west Bohemia` |
+|---|---|
+| `A2` | District name (human-readable) |
+| `A3` | Region name. Values: `'Prague'`, `'central Bohemia'`, `'east Bohemia'`, `'north Bohemia'`, `'north Moravia'`, `'south Bohemia'`, `'south Moravia'`, `'west Bohemia'` |
 | `A4` | Population |
-| `A5` | Number of municipalities with 1,000–10,000 inhabitants |
-| `A6` | Number of municipalities with 10,000+ inhabitants |
-| `A7` | Number of cities |
-| `A8` | Ratio of urban to rural population |
-| `A9` | Average salary |
-| `A10` | Unemployment rate (%) |
-| `A11` | Number of entrepreneurs |
-| `A12` | Crimes per 1,000 inhabitants |
-| `A13` | Crimes per 1,000 inhabitants (alternative measure) |
-| `A14` | Number of committed crimes |
-| `A15` | Number of solved crimes |
-| `A16` | Population (alternative measure) |
+| `A11` | Average salary |
+| `A12` / `A13` | Unemployment rates (two measures) |
+| `A14` | Number of entrepreneurs per 1000 inhabitants |
+| `A15` / `A16` | Crime counts (two years) |
+| `district_id = 1` | Always Prague — must be reported separately per business rules |
+| `district_id 70–77` | Operationally merged as "Eastern Region" |
+
+---
+
+### `financial.loan`
+One loan per account (accounts may have at most one loan).
+
+| Column | Notes |
+|---|---|
+| `status` | `'A'` = performing (contract finished, no issues); `'B'` = watch list (contract finished, loan not paid); `'C'` = non-performing (contract running, OK so far); `'D'` = non-performing (contract running, client in debt). Exclude `'C'`/`'D'` from profitability; exclude `'B'` from default rate denominator. |
+| `amount` | Total loan amount |
+| `duration` | Loan term in months |
+| `payments` | Monthly payment amount |
+
+---
+
+### `financial.order`
+Standing payment orders (recurring outgoing transfers).
+
+| Column | Notes |
+|---|---|
+| `bank_to` | Destination bank code (2-letter) |
+| `account_to` | Destination account number |
+| `k_symbol` | Payment category: `'POJISTNE'` (insurance), `'SIPO'` (household payments), `'LEASING'` (leasing), `'UVER'` (loan repayment), `''` (unspecified) |
+
+---
+
+### `financial.trans`
+Individual account transactions. Largest table — filter early.
+
+| Column | Notes |
+|---|---|
+| `type` | Direction: `'PRIJEM'` = credit/inflow, `'VYDAJ'` = debit/outflow, `'VYBER'` = cash withdrawal |
+| `operation` | Method: `'VKLAD'` (cash deposit), `'PREVOD Z UCTU'` (incoming transfer), `'PREVOD NA UCET'` (outgoing transfer), `'VYBER'` (cash withdrawal), `'VYBER KARTOU'` (card withdrawal) |
+| `k_symbol` | Category: `'UROK'` (interest — exclude from revenue), `'POJISTNE'` (insurance), `'SIPO'` (household), `'SLUZBY'` (services), `'SANKC. UROK'` (penalty interest), `'DUCHOD'` (pension), `'UVER'` (loan payment), `' '` or NULL (unclassified — exclude from revenue) |
+| `balance` | Running account balance after transaction |
+| `bank` | Counterparty bank code |
+| `account` | Counterparty account number |
+| `date` | Exclude dates before `'1995-01-01'` (legacy migration data — unreliable) |

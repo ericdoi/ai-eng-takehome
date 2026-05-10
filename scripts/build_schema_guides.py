@@ -152,6 +152,49 @@ def textualize_schema(conn: duckdb.DuckDBPyConnection, schema: str) -> str:
                         col_line += f"  — values: {', '.join(val_strs)}"
                 except Exception:
                     pass
+
+            is_date = any(kw in col_type.upper() for kw in ("DATE", "TIMESTAMP"))
+            if is_date:
+                sentinel_note = None
+                try:
+                    # Far-future sentinel (e.g. 9999-01-01 meaning "currently active")
+                    far_future = conn.execute(
+                        f'SELECT CAST("{col_name}" AS VARCHAR) FROM "{schema}"."{table}" '
+                        f'WHERE EXTRACT(YEAR FROM "{col_name}") >= 9000 LIMIT 1'
+                    ).fetchone()
+                    if far_future:
+                        sentinel_note = f"sentinel: '{far_future[0]}' means currently active"
+                    else:
+                        # Epoch-zero sentinel (year 1900 or 1970)
+                        epoch = conn.execute(
+                            f'SELECT CAST("{col_name}" AS VARCHAR) FROM "{schema}"."{table}" '
+                            f'WHERE EXTRACT(YEAR FROM "{col_name}") IN (1900, 1970) LIMIT 1'
+                        ).fetchone()
+                        if epoch:
+                            sentinel_note = f"sentinel: '{epoch[0]}' (possible epoch zero)"
+                        else:
+                            # Dominant single value covering >80% of rows
+                            total_row = conn.execute(
+                                f'SELECT COUNT(*) FROM "{schema}"."{table}"'
+                            ).fetchone()
+                            total = total_row[0] if total_row else 0
+                            if total > 10:
+                                dom = conn.execute(
+                                    f'SELECT CAST("{col_name}" AS VARCHAR), COUNT(*) as cnt '
+                                    f'FROM "{schema}"."{table}" '
+                                    f'WHERE "{col_name}" IS NOT NULL '
+                                    f'GROUP BY "{col_name}" ORDER BY cnt DESC LIMIT 1'
+                                ).fetchone()
+                                if dom and dom[1] > 0.8 * total:
+                                    sentinel_note = (
+                                        f"dominant value: '{dom[0]}' "
+                                        f"({dom[1]}/{total} rows, may be sentinel)"
+                                    )
+                except Exception:
+                    pass
+                if sentinel_note:
+                    col_line += f"  — {sentinel_note}"
+
             lines.append(col_line)
 
         # Sample rows
@@ -206,11 +249,25 @@ Write the sections in this order (most important first):
 1. **Schema summary**: one sentence describing what this schema contains.
 
 2. **Join paths**: exact SQL JOIN snippets (fully-qualified) for common table combinations.
+   Label each join path as one of:
+   - **[REQUIRED]** — always needed for this table combination
+   - **[OPTIONAL — display only]** — only join when the question asks for human-readable
+     names or descriptions; for grouping/filtering use the raw code column directly
+     (e.g., `UniqueCarrier`, `Origin`, `Dest`)
 
 3. **Business rules as SQL** (if rules provided): each rule as the exact SQL condition \
-or filter. Format:
-   - Rule: "language percentage exceeds 90%" → `WHERE cl.Percentage > 90`
-   - Rule: "on-time flight" → `WHERE ArrDelayMinutes <= 15`
+or filter. Use this exact format for each rule:
+   - **IDENTIFY [label]:** `WHERE condition` — rows matching this condition ARE [label]
+   - **EXCLUDE [label]:** `WHERE NOT condition` or subquery — to filter [label] OUT of results
+   For rates and ratios, always provide both numerator and denominator as explicit SQL:
+   - **Rate:** default_rate = COUNT(WHERE status IN ('C','D')) / COUNT(WHERE status != 'B')
+   Each rule must be independently parseable — no rule should require reading another rule \
+to understand what it selects.
+   **IMPORTANT:** When multiple IDENTIFY rules map a single column's values to different \
+human-readable labels (e.g., status A→'Performing', B→'Watch List', C/D→'Non-Performing'), \
+emit a combined CASE WHEN SQL showing all mappings in one expression — in addition to the \
+individual IDENTIFY rules. Preserve exact label strings including capitalization from the \
+source rules.
 
 4. **Synonym glossary**: map common question terms to exact schema identifiers.
    Format: "career hits" → `SUM({schema}.batting.H)`, "dominant language" → `WHERE Percentage > 90`
@@ -228,6 +285,7 @@ def synthesize_guide(
     schema: str,
     textualized: str,
     guide_content: str | None,
+    model: str = SYNTHESIS_MODEL,
 ) -> str:
     """Call the LLM to produce a comprehensive schema guide."""
     rules_section = ""
@@ -248,7 +306,7 @@ def synthesize_guide(
             resp = client.post(
                 f"{API_BASE}/chat/completions",
                 json={
-                    "model": SYNTHESIS_MODEL,
+                    "model": model,
                     "messages": [
                         {"role": "system", "content": _SYNTHESIS_SYSTEM},
                         {"role": "user", "content": user_msg},
@@ -327,6 +385,11 @@ def main() -> None:
         help="Generate for a single schema only (useful for spot-checks)",
     )
     parser.add_argument(
+        "--model",
+        default=SYNTHESIS_MODEL,
+        help=f"LLM model for synthesis (default: {SYNTHESIS_MODEL})",
+    )
+    parser.add_argument(
         "--concurrency",
         type=int,
         default=8,
@@ -378,6 +441,8 @@ def main() -> None:
             "HTTP-Referer": "https://github.com/hex-inc/takehome",
         }
 
+        print(f"Synthesis model: {args.model}")
+
         schemas_to_run = [
             s for s in all_schemas
             if args.schema or not (OUTPUT_DIR / f"{s}.md").exists()
@@ -401,7 +466,7 @@ def main() -> None:
                 thread_conn.close()
 
             with httpx.Client(headers=http_headers, timeout=120.0) as thread_client:
-                guide_text = synthesize_guide(thread_client, schema, textualized, guide_content)
+                guide_text = synthesize_guide(thread_client, schema, textualized, guide_content, model=args.model)
 
             out_path.write_text(guide_text, encoding="utf-8")
             return schema, None

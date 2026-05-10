@@ -2,18 +2,23 @@
 
 ## Where we are
 
-Best scores: **62.5% easy (40/64), 39.1% hard (25/64)** — Run 1, committed as `482a275`.
+Best scores: **79.7% easy (51/64), 59.4% hard (38/64)** — Run 8, 2026-05-10.
 
-Phase 2 (generated guides + `find_schema` tool) is implemented and committed as `da80184`
-(Run 6: 21/64 hard, 32.8%). Navigation is now solved — AGENT_ERROR fell to 2, schema
-identification 94%, table identification 84%. The sole remaining bottleneck is **business-rule
-application**: 33 of 54 right-table cases still produce wrong SQL.
+Phase 2 (generated guides + `find_schema` tool) is committed as `da80184`.
+Run 8 (2026-05-10): **38/64 hard (59.4%)** — up from 32/64 (50.0%) in Run 7, +6 cases.
 
-Next action: implement five targeted fixes from `context/PLAN_business_logic.md`, regenerate
-guides for the 7 top-failing schemas, and run eval (Run 7). Do NOT regenerate all 76 schemas
-yet — test iteratively.
+Navigation funnel: schema 97%, tables 88%, logic 68% (38/56 right-table cases).
+7 navigation failures remain; 19 wrong-logic cases are the bottleneck.
 
-## Code state (committed, `da80184` / `ac0526a`)
+Fixes implemented in Run 8 (on top of Run 7 fixes):
+- Fix 6: Agent prompt — extra columns are never penalized; include source cols alongside derived
+- Fix 7: Agent prompt — EXCLUDE rules are conditional, not universally applied
+- Fix 8: Synthesis prompt — emit combined CASE WHEN SQL for multi-value classifications
+
+Schemas regenerated: financial (Sonnet), Credit, lahman_2014, ErgastF1, Airline, CraftBeer, Hockey.
+Run 8 log: `logs/run_20260510_084621/`.
+
+## Code state (uncommitted changes on top of `da80184` / `ac0526a`)
 
 All Phase 2 changes are committed. Working tree is clean.
 
@@ -30,20 +35,23 @@ All Phase 2 changes are committed. Working tree is clean.
 **Disabled (code present, not wired):** `search_guides`, `read_guide` (`tools/guide_tools.py`),
 `list_schemas`, `sample_rows`, `search_columns` (`tools/db_tools.py`).
 
-## Pending changes (not yet implemented)
+## Run 7 failure analysis (32 remaining failures)
 
-Five fixes from `context/PLAN_business_logic.md` — all code changes, no guide regen yet:
+| Pattern | Count | Schemas |
+|---------|-------|---------|
+| Wrong logic / business rules | 26 | lahman_2014(6), financial(4), Credit(3), world(3), ErgastF1(4), Airline(3), CraftBeer(2), Hockey(1), Chess(1) |
+| Wrong schema | 4 | Credit×2, world×1, financial×1 |
+| Wrong tables | 1 | employee (missed employees table) |
+| AGENT_ERROR | 1 | financial |
 
-| Fix | File | Description |
-|-----|------|-------------|
-| 1 | `scripts/build_schema_guides.py` | Synthesis prompt: IDENTIFY vs EXCLUDE rule framing; explicit rate denominators |
-| 2 | `scripts/build_schema_guides.py` | `textualize_schema()`: detect date sentinel values (9999-01-01, epoch zeros, dominant single value) |
-| 3 | `scripts/build_schema_guides.py` | Synthesis prompt: label join paths as [REQUIRED] vs [OPTIONAL — display only] |
-| 4 | `scripts/build_schema_guides.py` | Add `--model` CLI flag; regen financial with `anthropic/claude-sonnet-4-6` |
-| 5 | `framework/agent.py` | System prompt: "Use LEFT JOIN for lookup/optional tables" |
-
-After implementing, regen these 7 schemas (top Run 6 failures) and re-embed:
-**financial, Credit, Airline, lahman_2014, Chess, employee, ErgastF1**
+**Key logic failure patterns:**
+- ErgastF1 (4): uses driverRef/constructorRef instead of forename/surname/name
+- lahman_2014 (6): per-row vs aggregate confusion, unclear non-reliever/starter filters
+- financial (4): over-applies EXCLUDE rules; CASE WHEN label mapping missed; wrong join pattern
+- Credit (3): over-applies RF refund exclusion; category casing 'essential' vs 'Essential'
+- world (3): extra/missing output columns, wrong population filter
+- Airline (3): thin-route / severe-delay / completed-flight definitions unclear
+- CraftBeer (2): "high-gravity" / "extreme" IBU thresholds not in guide
 
 ## How to run the eval
 
@@ -64,8 +72,8 @@ uv run python scripts/analyze_run.py logs/run_<timestamp>/ --split hard
 uv run python scripts/analyze_run.py logs/run_<timestamp>/ --split hard --csv context/runN_hard.csv
 ```
 
-API budget: **~$12.68 remaining** as of 2026-05-10 (~$1.05/full guide regen, ~$1.70/hard-only
-eval run, ~$3.30/both-splits run, ~$0.05-0.10/single Sonnet schema). Check balance:
+API budget: **~$13.19 remaining** as of 2026-05-10 (~$1.05/full guide regen, ~$0.36/hard-only
+eval run, ~$0.05-0.10/single Sonnet schema). Check balance:
 ```bash
 curl -s https://openrouter.ai/api/v1/auth/key \
   -H "Authorization: Bearer $(grep OPENROUTER_API_KEY .env | cut -d= -f2)" \
@@ -78,17 +86,14 @@ curl -s https://openrouter.ai/api/v1/auth/key \
 - `compress_context`: **True**
 - `compress_max_chars`: **400**
 
-## Run 6 failure analysis
+## Run history
 
-Root causes identified in `context/issues/business_logic_failures.md`:
-
-| Pattern | Schemas affected | Root cause |
-|---------|-----------------|------------|
-| Lookup-table joins for aggregations | Airline (6) | Guide join paths listed without REQUIRED/OPTIONAL labels; agent uses them unnecessarily |
-| Inverted/ambiguous business-rule SQL | financial (7) | Synthesizer labeled exclusion filter as definition (NOT IN vs IN confusion) |
-| Missing rate denominators | financial | Source rule "exclude B from rate" never given as explicit SQL denominator |
-| Date sentinel not surfaced | employee (4) | Textualization only covers VARCHAR distinct values, not DATE sentinels |
-| Optional table join drops rows | Chess (4) | INNER JOIN to opening table silently drops unmatched games |
+| Run | Hard score | Notes |
+|-----|-----------|-------|
+| Run 1 | 25/64 (39.1%) | Baseline |
+| Run 6 | 21/64 (32.8%) | Phase 2 (find_schema + guides); navigation fixed |
+| Run 7 | 32/64 (50.0%) | Fixes 1–5: IDENTIFY/EXCLUDE framing, sentinels, REQUIRED/OPTIONAL joins, Sonnet for financial, LEFT JOIN prompt |
+| Run 8 | 38/64 (59.4%) | Fixes 6–8: extra-columns agent rule, conditional EXCLUDE, combined CASE WHEN in guides |
 
 ## Eval variance note
 
