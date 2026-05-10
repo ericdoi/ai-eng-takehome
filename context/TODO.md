@@ -6,42 +6,42 @@
 - If the top item is not trivial, break it down into sub-items until the top item is trivial.
 -->
 
+## Phase 2 — Next iteration (current best: 62.5% easy, 39.1% hard)
 
-## Phase 0 — Debug harness (deferred, do after Phase 1 results)
+Current failure buckets (Run 1 hard split): 20 MISMATCH, 10 AGENT_ERROR, 7 NO_SUBMISSION, 2 SQL_ERROR.
 
-- [ ] Write `scripts/analyze_run.py` — trace inspector
-  - [ ] Accept a run dir as argument
-  - [ ] Bucket failures by `failure_type`
-  - [ ] Per failed case: print prompt, gold query, submitted query, first DuckDB error
-  - [ ] Group failures by schema (regex schema name from gold query)
-  - [ ] Dump CSV: `(case_idx, prompt, schema_used, failure_type, error)`
-- [ ] Write `scripts/rerun_case.py` — single-case rerunner
-  - [ ] Accept `--split` and `--idx`; stream events via `StreamPrinter`
+- [ ] Fix AGENT_ERROR / re-exploration loop
+  - See `context/issues/agent_error_reexploration.md` for full trace and root cause analysis
+  - Root cause: agent calls `list_schemas` repeatedly after already finding the right schema via guide
+  - Approaches to consider before implementing:
+    - Prompt: tell the agent the guide title names the schema; use it directly
+    - Prompt: explicitly warn against re-calling `list_schemas` after a schema is identified
+    - Tool: scope `search_columns` to a single schema (avoids cross-schema confusion, could replace repeated `list_tables`/`describe_table` cycling)
+    - Tool: `list_schemas` output could include table counts or a hint to use `search_guides` first
+  - [ ] Pick an approach, implement, run eval, record results
+- [ ] Fix NO_SUBMISSION (7 hard) — agent never calls submit_answer
+  - Likely same root cause as AGENT_ERROR (exhausted iterations or fell into bad loop)
+  - Should improve once AGENT_ERROR is fixed
+- [ ] Fix MISMATCH (20 hard) — wrong business rules applied
+  - After AGENT_ERROR fix, re-analyze which MISMATCHes are rule misses vs logic errors
+  - Candidate: require `read_guide` before `submit_answer` (CoT scaffold)
 
-## Phase 2 — Iterate on long tail
+## Phase 0 — Debug harness (nice to have)
 
-- [x] `scripts/analyze_run.py` — trace inspector (failure buckets, per-schema breakdown, CSV dump)
-- [x] Add `search_columns(keyword)` tool — finds schema/table by column keyword via `information_schema`; fixes `world`-schema AGENT_ERROR cluster (agent was burning 30 iterations exploring wrong schemas)
-- [ ] Record Run 2 results (in progress)
-- [ ] Diagnose remaining failures and apply next fix
-  - Remaining buckets after Run 1: 20 MISMATCH hard, 10 AGENT_ERROR hard, 7 NO_SUBMISSION hard
-  - Candidate fixes (pick based on Run 2 data):
-    - AGENT_ERROR / NO_SUBMISSION → check if CoT scaffold or `run_sql`-before-submit helps
-    - MISMATCH from wrong rules → strengthen guide reading (require read_guide before submit)
-    - MISMATCH from logic errors → review specific failing cases
+- [ ] `scripts/rerun_case.py` — single-case rerunner (`--split`, `--idx`, stream via `StreamPrinter`)
 
-## Phase 3 — Stretch (only if Phases 1–2 plateau)
+## Phase 3 — Stretch (only if Phase 2 plateaus)
 
-- [ ] Embedding-based guide retrieval via OpenRouter `/embeddings` (fallback if ≥5 hard failures are paraphrase-shaped retrieval misses)
-- [ ] Full schema dump for the matched schema (per "Death of Schema Linking?" finding)
-- [ ] Try higher `reasoning.effort` on default model before swapping models
+- [ ] Embedding-based guide retrieval via OpenRouter `/embeddings` (if ≥5 hard failures are paraphrase-shaped retrieval misses)
+- [ ] Full schema dump for matched schema (per "Death of Schema Linking?" finding)
+- [ ] Try higher `reasoning.effort` on default model
 
 ## Phase 4 — Writeup
 
 - [ ] Draft prose writeup (PDF or doc)
-  - [ ] Baseline numbers
-  - [ ] What changed and why, with per-phase score delta
-  - [ ] Tradeoffs: BM25 vs embeddings, prompt scaffolding vs more tools, model cost
+  - [ ] Baseline numbers and run progression
+  - [ ] What changed and why, with per-run score delta
+  - [ ] Tradeoffs: BM25 vs embeddings, search_columns failure and lesson learned
   - [ ] What I'd do next with another day
   - [ ] Generalization notes
 - [ ] Email fork link to recruiter
