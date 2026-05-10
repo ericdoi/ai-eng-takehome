@@ -11,29 +11,21 @@
 | 5 | Phase 2: generated guides + find_schema tool (first run, guides truncated + bare SQL) | — | 21/64 | — | 32.8% | ~$1.70 | `logs/run_20260510_072957/` |
 | 6 | Phase 2 v2: fixed guides (schema-qualified SQL, join paths first, schema name banner) | — | 21/64 | — | 32.8% | ~$1.00 | `logs/run_20260510_075148/` |
 
-## Hard split failure breakdown
+## Hard split breakdown (failure types + navigation funnel)
 
-| Type          | Run 0 | Run 1 | Run 2 | Run 3 | Run 4 | Run 1′ | Run 5 | Run 6 |
-|---------------|-------|-------|-------|-------|-------|--------|-------|-------|
-| PASS          |   0   |  25   |  18   |  21   |  17   |  17    |  21   |  21   |
-| MISMATCH      |  24   |  20   |  26   |  26   |  15   |  24    |  32   |  40   |
-| AGENT_ERROR   |   0   |  10   |   5   |   7   |  32   |   6    |  11   |   2   |
-| NO_SUBMISSION |   0   |   7   |  10   |   3   |   0   |  10    |   —   |   0   |
-| SQL_ERROR     |  40   |   2   |   5   |   7   |   0   |   7    |   —   |   1   |
-| Other         |   0   |   0   |   0   |   0   |   0   |   0    |  11   |   0   |
+| Run | Pass | Mismatch | Agent<br>Error | SQL<br>Error | Other | Right<br>schema | Right<br>tables | Wrong<br>logic |
+|-----|------|----------|----------------|--------------|-------|-----------------|-----------------|----------------|
+|  0  |   0  |    24    |      0         |      40      |   0   |   0/64  (0%)    |   0/64  (0%)    |      0         |
+|  1  |  25  |    20    |     10         |       2      |   7   |  57/64 (89%)    |  51/64 (80%)    |     27         |
+|  2  |  18  |    26    |      5         |       5      |  10   |  56/64 (88%)    |  43/64 (67%)    |     26         |
+|  3  |  21  |    26    |      7         |       7      |   3   |  60/64 (94%)    |  52/64 (81%)    |     33         |
+|  4  |  17  |    15    |     32         |       0      |   0   |  64/64 (100%)   |  60/64 (94%)    |     43         |
+|  1′ |  17  |    24    |      6         |       7      |  10   |  57/64 (89%)    |  51/64 (80%)    |     34         |
+|  5  |  21  |    32    |     11         |       —      |  11   |  56/64 (88%)    |  50/64 (78%)    |     29         |
+|  6  |  21  |    40    |      2         |       1      |   0   |  60/64 (94%)    |  54/64 (84%)    |     33         |
 
-## Navigation funnel (hard split, from trace analysis)
-
-| Run | Right schema | Right tables | Right logic (=pass) | Wrong schema | Wrong tables | Wrong logic |
-|-----|-------------|-------------|---------------------|-------------|-------------|-------------|
-| 0   |  0/64  (0%) |  0/64  (0%) |  0/64  (0%)         | 64          |  0          |  0          |
-| 1   | 57/64 (89%) | 51/64 (80%) | 25/64 (39%)         |  7          |  5          | 27          |
-| 2   | 56/64 (88%) | 43/64 (67%) | 18/64 (28%)         |  8          | 12          | 26          |
-| 3   | 60/64 (94%) | 52/64 (81%) | 21/64 (33%)         |  4          |  6          | 33          |
-| 4   | 64/64 (100%)| 60/64 (94%) | 17/64 (27%)         |  0          |  4          | 43          |
-| 1′  | 57/64 (89%) | 51/64 (80%) | 17/64 (27%)         |  7          |  6          | 34          |
-| 5   | 56/64 (88%) | 50/64 (78%) | 21/64 (33%)         |  8          |  6          | 29          |
-| 6   | 60/64 (94%) | 54/64 (84%) | 21/64 (33%)         |  4          |  6          | 33          |
+"Wrong logic" = cases where the agent reached the right tables but submitted wrong SQL (= Mismatch + some Other).
+"Other" = NO_SUBMISSION and uncategorised failures.
 
 **Key insight:** Run 4 achieved perfect schema identification (100%) and near-perfect table
 identification (94%) — yet logic (pass rate) hit its lowest point (27%). Wrong logic dominates
