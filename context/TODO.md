@@ -11,28 +11,14 @@
 Navigation funnel analysis showed wrong logic (27–43 cases/run) dominates wrong schema/tables
 combined in every run. Prompt engineering is abandoned. Full plan: `context/PLAN_generated_guides.md`.
 
-- [ ] **Build `scripts/build_schema_guides.py`**
-  - [ ] Textualize each of the 76 schemas: list tables, describe columns, sample rows, capture
-        distinct values for low-cardinality VARCHAR columns
-  - [ ] Build `schema_to_guide` mapping (H1 extraction + `GUIDE_OVERRIDES` dict for mismatches
-        like `movie_ratings.md` → `imdb_MovieLens`, `f1_racing_metrics.md` → `ErgastF1`)
-  - [ ] LLM synthesis loop: for each schema, call LLM with textualized schema + guide (if any)
-        to produce a comprehensive guide with exact names, synonyms, join paths, rules as SQL
-  - [ ] Save to `evaluation/data/generated_guides/<schema>.md`
-  - [ ] Embed all generated guides via OpenRouter `/v1/embeddings` (`text-embedding-3-small`)
-  - [ ] Save embeddings to `evaluation/data/generated_guides/embeddings.npz`
+- [x] **Build `scripts/build_schema_guides.py`**
+- [x] **Write `tools/schema_guide_tools.py`**
+- [x] **Wire and validate**
+  - Validated: all 76 guides have no hallucinated table or column names
+  - Spot-checked business-rule SQL conditions (world, Accidents, Airline, Chess) — all correct
+  - Wired into `evaluate.py` / `interactive.py`; system prompt simplified to find_schema → run_sql → submit
 
-- [ ] **Write `tools/schema_guide_tools.py`**
-  - [ ] Load embeddings at startup, expose `find_schema(query)` tool
-  - [ ] Return full guide content for top cosine-similarity match
-  - [ ] Return top-2 if score gap is small (< 0.05)
-
-- [ ] **Wire and validate**
-  - [ ] Add `find_schema` to `evaluate.py` and `interactive.py` `create_tools()`
-  - [ ] Simplify system prompt: `find_schema` → `run_sql` → `submit_answer` happy path;
-        keep `list_tables` / `describe_table` as fallbacks
-  - [ ] Spot-check 5–10 generated guides: verify all `schema.Table` references exist in DB
-  - [ ] Test interactively on 2–3 known failure cases before full eval
+- [ ] **Test interactively** on 2–3 known failure cases before full eval
 
 - [ ] **Run eval, record results** — target ≥ 30/64 hard (≥47%) to clear the variance threshold
 

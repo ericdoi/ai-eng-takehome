@@ -4,22 +4,25 @@
 
 Best scores: **62.5% easy (40/64), 39.1% hard (25/64)** — Run 1, committed as `482a275`.
 
-All subsequent runs (2–4, 1′) regressed or matched Run 1. Prompt-engineering attempts to
-fix the AGENT_ERROR re-exploration loop were abandoned after the navigation funnel analysis
-showed that wrong logic (27–43 cases/run) dominates wrong schema (0–8) and wrong tables
-(0–12) in every run. Better navigation doesn't convert to better scores.
-
-**Current approach:** build LLM-synthesized schema guides that fuse exact DB structure with
-business rules as SQL conditions, then retrieve via embeddings. Plan: `context/PLAN_generated_guides.md`.
+Phase 2 (generated guides) is implemented and ready to eval. All 76 schema guides have been
+synthesized and embedded. The agent now uses a single `find_schema` tool instead of the
+old multi-step navigation chain. **No eval run has been done yet with this new toolset.**
 
 ## Code state
 
-Working tree is **clean at Run 1** (`482a275`). No staged changes to agent or tools.
+Working tree has **uncommitted Phase 2 changes** on top of `482a275`:
 
-```bash
-git status   # should show only context/ and scripts/ modifications
-git stash    # if any accidental edits exist
-```
+| File | Change |
+|------|--------|
+| `scripts/build_schema_guides.py` | New — offline guide synthesis + embedding pipeline |
+| `tools/schema_guide_tools.py` | New — `find_schema` tool (cosine similarity over embeddings) |
+| `evaluation/evaluate.py` | `create_tools()` now uses `find_schema`, `list_tables`, `describe_table`, `run_sql`, `submit_answer` |
+| `interactive.py` | Same tool change |
+| `framework/agent.py` | Simplified system prompt: `find_schema → run_sql → submit` |
+
+Generated artifacts (git-ignored or not yet committed):
+- `evaluation/data/generated_guides/*.md` — 76 schema guides
+- `evaluation/data/generated_guides/embeddings.npz` — 76×1536 float32, L2-normalized
 
 ## How to run the eval
 
@@ -48,17 +51,14 @@ curl -s https://openrouter.ai/api/v1/auth/key \
 
 | Tool | File | Notes |
 |------|------|-------|
-| `search_guides` | `tools/guide_tools.py` | BM25 over `##`-chunked guide files |
-| `read_guide` | `tools/guide_tools.py` | Returns full guide file content |
-| `list_schemas` | `tools/db_tools.py` | Lists all 76 schemas |
-| `list_tables` | `tools/db_tools.py` | Lists tables in a schema |
-| `describe_table` | `tools/db_tools.py` | Column names + types |
-| `sample_rows` | `tools/db_tools.py` | Small row sample (max 20) |
+| `find_schema` | `tools/schema_guide_tools.py` | Embeds query, cosine-similarity over 76 generated guides; returns top-1 (or top-2 if gap < 0.05) |
+| `list_tables` | `tools/db_tools.py` | Fallback: lists tables in a schema |
+| `describe_table` | `tools/db_tools.py` | Fallback: column names + types |
 | `run_sql` | `tools/db_tools.py` | Read-only SQL, output capped at 3000 chars |
 | `submit_answer` | `tools/submit_answer.py` | Submits final query, terminates agent |
 
-**Disabled (code present, not wired):** `search_columns` in `tools/db_tools.py` — caused
-regression in Run 2 by returning hits from unrelated schemas for generic keywords.
+**Disabled (code present, not wired):** `search_guides`, `read_guide` (`tools/guide_tools.py`),
+`list_schemas`, `sample_rows`, `search_columns` (`tools/db_tools.py`).
 
 ## Key config (in `framework/llm.py`)
 
@@ -68,17 +68,12 @@ regression in Run 2 by returning hits from unrelated schemas for generic keyword
 
 ## What to do next
 
-See `context/TODO.md`. The immediate next action is building the generated-guides pipeline
-per `context/PLAN_generated_guides.md`:
+See `context/TODO.md`. Immediate next actions:
 
-1. Write `scripts/build_schema_guides.py` — textualize each schema, LLM-synthesize a
-   comprehensive guide (schema structure + business rules as SQL), embed, save to
-   `evaluation/data/generated_guides/`.
-2. Write `tools/schema_guide_tools.py` — `find_schema(query)` tool using cosine similarity
-   over the embedded guides.
-3. Wire `find_schema` into `evaluate.py` / `interactive.py`; simplify system prompt.
-4. Validate generated guides (spot-check table names match actual DB).
-5. Run eval and record results.
+1. **Interactive spot-check** — run `interactive.py` on 2–3 known hard-split failure cases
+   to confirm `find_schema` retrieves the right guide and the agent writes correct SQL.
+2. **Run hard eval** — `source .env && uv run evaluate --api-key "$OPENROUTER_API_KEY" --split hard --concurrency 16`
+3. Record results in `context/RESULTS.md`; target ≥ 30/64 (≥47%) to clear variance threshold.
 
 ## Key findings from funnel analysis
 

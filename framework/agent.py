@@ -358,14 +358,15 @@ class Agent:
             "- Schema and table names are CASE-SENSITIVE\n"
             "- Never reference unqualified table names — queries will fail\n\n"
 
-            "RECOMMENDED WORKFLOW:\n"
-            "1. search_guides — search for business rules using domain terms from the question\n"
-            "2. read_guide — read the full guide for any strong hits to get all rules\n"
-            "3. list_schemas — find relevant schemas\n"
-            "4. list_tables(schema) — find tables in the target schema\n"
-            "5. describe_table(schema, table) — check column names and types\n"
-            "6. run_sql — preview your query to verify results before submitting\n"
-            "7. submit_answer — submit your final SQL query\n\n"
+            "WORKFLOW:\n"
+            "1. find_schema — ALWAYS your first call. Pass the question or key terms as the query.\n"
+            "   Returns the full guide: exact table names, column names, join paths, and\n"
+            "   business rules already written as SQL conditions. Read it carefully.\n"
+            "2. run_sql — verify your query returns the right shape of results.\n"
+            "3. submit_answer — submit your final SQL query.\n\n"
+
+            "If find_schema does not name the exact columns you need, use list_tables(schema) "
+            "and describe_table(schema, table) to fill gaps. Never guess column names.\n\n"
 
             "GRADER (loose comparison):\n"
             "- Row count must match exactly\n"
@@ -373,8 +374,8 @@ class Agent:
             "- Extra columns are fine\n"
             "- Float values compared with ε=1e-4 tolerance\n\n"
 
-            "Business rules in guides (filters, thresholds, exclusions) are critical for "
-            "correctness. Always check guides before writing SQL for any domain question."
+            "Business rules in the guide (filters, thresholds, exclusions) are encoded as SQL. "
+            "Apply them exactly as written."
         )
 
     def run(self, prompt: str) -> Iterator[AgentEvent]:
