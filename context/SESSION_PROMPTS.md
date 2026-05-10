@@ -109,3 +109,48 @@ Sensitive values (API key) redacted.
 13. let's make sure the docs contain what's needed for a handoff.
 
 14. please update SESSION_PROMPTS.md with the prompts in this session. you can add a new section
+
+---
+
+## Session 3
+
+1. *(session resumed from summary)* Is the find_schema tool documentation clear on what it's returning?
+
+2. Is it confusing that the generated guides themselves have SQL snippets which omit the schema name? E.g. /Users/ericdoi/.../ErgastF1.md
+
+3. Let's regenerate the guides.
+
+4. How many credits are left on the openrouter api
+
+5. We should note how much each schema regeneration costs, roughly, in the STATUS.md and code docs.
+
+6. Good. Let's update the TODO and WORKLOG and RESULTS so far before running the evals again
+
+7. Note that "Run 5" was previously referring to something else so let's make sure there's no confusion there
+
+8. Let's do an eval run, update the results/worklog/todo, and then do a git commit before further iteration.
+
+9. We should be adding the funnel analysis results into a markdown table in RESULTS.md as well, either the existing "Hard split failure breakdown" or a separate sub-breakdown.
+
+10. ah sorry, thanks
+
+11. Let's re-commit
+
+12. Let's dig in, and create a new issues file regarding the business logic
+
+13. Are these failures of understanding the original guides, or is there actual ambiguity? We don't want to overfit to the evals data by doing custom fixes, and instead should focus on approaches that can (1) improve the overall quality of our guides, (2) provide more focused context to avoid overwhelming the agent, or (3) improve the agent prompt guidance in a general way
+
+14. Agreed on those 3 approaches. Let's add them to a plan file for the business logic issue.
+    Also:
+    Financial: IIUC, our synthesizer LLM call uses haiku; we should re-run the guide generation with Sonnet or Opus on Financial (noting the cost) and see if it fixes the issue.
+    Airline + Chess: left joins would be safe, right? We could add some guidance on that to the prompt.
+
+15. Let's add all the TODOs to the TODO.md file before starting
+
+16. Let's not re-gen all guides yet; we should test iteratively. Regen the guides for the main failure cases first.
+
+17. Wait; make sure the docs have all the context so I can clear the session.
+
+18. Regenerating with sonnet/opus will be much more expensive than haiku and we likely won't be able to afford it on all schemas
+
+19. Also, please update context/SESSION_PROMPTS.md
