@@ -72,3 +72,34 @@ wrong schema name ("Countries") and spiral.
 Similar loop pattern likely explains AGENT_ERROR cases in `ErgastF1`, `Credit`, `financial`
 schemas — agent finds partial information from the guide snippet, picks a wrong or ambiguous
 schema name from it, and cycles until max iterations.
+
+## Intervention history
+
+### Run 3 (strict rules + schema hint in search_guides)
+
+Changes:
+- `search_guides` now shows `Schema: <name>` extracted from guide H1 (e.g. `Schema: ErgastF1`)
+- System prompt: REQUIRED WORKFLOW, STRICT RULES block (NEVER call list_schemas before
+  search_guides / more than once; MUST read_guide before schema exploration if score ≥ 5)
+
+Result: AGENT_ERROR 10→7 ✓, NO_SUBMISSION 7→3 ✓, but SQL_ERROR 2→7 ✗, MISMATCH 20→26 ✗.
+Net regression (25→21 PASS). Root cause of new SQL_ERRORs: agents skipped `list_tables` and
+hallucinated table names (`f1.results`, `Racing.lap_times`, `world.countries`). Also,
+`Schema: world / Countries` was ambiguous — caused table-name confusion for the world schema.
+
+### Run 4 (soft rules + world schema fix)
+
+Changes:
+- Fixed `world / Countries` → `world` (first-token extraction)
+- Softened STRICT RULES → ANTI-LOOP RULES advisory (NEVER → "at most once")
+- Added explicit "ALWAYS call list_tables" in workflow
+
+Result: AGENT_ERROR 7→32 ✗ (massive), tokens tripled. Advisory language was completely
+insufficient to override the model's re-exploration tendency. Key finding: the model requires
+NEVER/STRICT language — "at most once" is interpreted permissively.
+
+### Run 5 (staged, not yet run)
+
+Plan: restore STRICT RULES language + keep world schema fix + add "ALWAYS call list_tables —
+table names are case-sensitive and WILL differ from guide descriptions" in workflow step 3.
+Goal: get strict anti-loop enforcement (fixes AGENT_ERROR) without skipping list_tables (fixes SQL_ERROR).

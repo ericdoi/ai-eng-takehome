@@ -6,25 +6,35 @@
 - If the top item is not trivial, break it down into sub-items until the top item is trivial.
 -->
 
-## Phase 2 — Next iteration (current best: 62.5% easy, 39.1% hard)
+## Phase 2 — Generated guides pipeline (current best: 62.5% easy, 39.1% hard)
 
-Current failure buckets (Run 1 hard split): 20 MISMATCH, 10 AGENT_ERROR, 7 NO_SUBMISSION, 2 SQL_ERROR.
+Navigation funnel analysis showed wrong logic (27–43 cases/run) dominates wrong schema/tables
+combined in every run. Prompt engineering is abandoned. Full plan: `context/PLAN_generated_guides.md`.
 
-- [ ] Fix AGENT_ERROR / re-exploration loop
-  - See `context/issues/agent_error_reexploration.md` for full trace and root cause analysis
-  - Root cause: agent calls `list_schemas` repeatedly after already finding the right schema via guide
-  - Approaches to consider before implementing:
-    - Prompt: tell the agent the guide title names the schema; use it directly
-    - Prompt: explicitly warn against re-calling `list_schemas` after a schema is identified
-    - Tool: scope `search_columns` to a single schema (avoids cross-schema confusion, could replace repeated `list_tables`/`describe_table` cycling)
-    - Tool: `list_schemas` output could include table counts or a hint to use `search_guides` first
-  - [ ] Pick an approach, implement, run eval, record results
-- [ ] Fix NO_SUBMISSION (7 hard) — agent never calls submit_answer
-  - Likely same root cause as AGENT_ERROR (exhausted iterations or fell into bad loop)
-  - Should improve once AGENT_ERROR is fixed
-- [ ] Fix MISMATCH (20 hard) — wrong business rules applied
-  - After AGENT_ERROR fix, re-analyze which MISMATCHes are rule misses vs logic errors
-  - Candidate: require `read_guide` before `submit_answer` (CoT scaffold)
+- [ ] **Build `scripts/build_schema_guides.py`**
+  - [ ] Textualize each of the 76 schemas: list tables, describe columns, sample rows, capture
+        distinct values for low-cardinality VARCHAR columns
+  - [ ] Build `schema_to_guide` mapping (H1 extraction + `GUIDE_OVERRIDES` dict for mismatches
+        like `movie_ratings.md` → `imdb_MovieLens`, `f1_racing_metrics.md` → `ErgastF1`)
+  - [ ] LLM synthesis loop: for each schema, call LLM with textualized schema + guide (if any)
+        to produce a comprehensive guide with exact names, synonyms, join paths, rules as SQL
+  - [ ] Save to `evaluation/data/generated_guides/<schema>.md`
+  - [ ] Embed all generated guides via OpenRouter `/v1/embeddings` (`text-embedding-3-small`)
+  - [ ] Save embeddings to `evaluation/data/generated_guides/embeddings.npz`
+
+- [ ] **Write `tools/schema_guide_tools.py`**
+  - [ ] Load embeddings at startup, expose `find_schema(query)` tool
+  - [ ] Return full guide content for top cosine-similarity match
+  - [ ] Return top-2 if score gap is small (< 0.05)
+
+- [ ] **Wire and validate**
+  - [ ] Add `find_schema` to `evaluate.py` and `interactive.py` `create_tools()`
+  - [ ] Simplify system prompt: `find_schema` → `run_sql` → `submit_answer` happy path;
+        keep `list_tables` / `describe_table` as fallbacks
+  - [ ] Spot-check 5–10 generated guides: verify all `schema.Table` references exist in DB
+  - [ ] Test interactively on 2–3 known failure cases before full eval
+
+- [ ] **Run eval, record results** — target ≥ 30/64 hard (≥47%) to clear the variance threshold
 
 ## Phase 0 — Debug harness (nice to have)
 
@@ -32,16 +42,18 @@ Current failure buckets (Run 1 hard split): 20 MISMATCH, 10 AGENT_ERROR, 7 NO_SU
 
 ## Phase 3 — Stretch (only if Phase 2 plateaus)
 
-- [ ] Embedding-based guide retrieval via OpenRouter `/embeddings` (if ≥5 hard failures are paraphrase-shaped retrieval misses)
-- [ ] Full schema dump for matched schema (per "Death of Schema Linking?" finding)
+- [ ] Hybrid BM25 + embedding retrieval (Reciprocal Rank Fusion) over generated guides
 - [ ] Try higher `reasoning.effort` on default model
+- [ ] Run both splits once a hard improvement is confirmed, to check easy-split regression
 
 ## Phase 4 — Writeup
 
 - [ ] Draft prose writeup (PDF or doc)
-  - [ ] Baseline numbers and run progression
+  - [ ] Baseline numbers and run progression with funnel analysis
   - [ ] What changed and why, with per-run score delta
-  - [ ] Tradeoffs: BM25 vs embeddings, search_columns failure and lesson learned
+  - [ ] Key finding: navigation wasn't the bottleneck; wrong logic was
+  - [ ] Tradeoffs: BM25 vs embeddings, search_columns failure, prompt-engineering dead ends
+  - [ ] Generated guides: design, implementation, results
   - [ ] What I'd do next with another day
-  - [ ] Generalization notes
+  - [ ] Generalization notes (no overfitting to visible 64 cases)
 - [ ] Email fork link to recruiter

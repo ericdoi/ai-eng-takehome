@@ -1,0 +1,491 @@
+case_idx,split,passed,failure_type,schema_used,prompt,gold_query,submitted_query,error,duration_seconds
+0,evals_hard,False,MISMATCH,Chess,Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in opening analysis.,"SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE g.whiteElo IS NOT NULL AND g.BlackElo IS NOT NULL AND ABS(g.whiteElo - g.BlackElo) > 400 AND o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%'","SELECT game_id,
+       white,
+       black,
+       whiteElo,
+       BlackElo,
+       ABS(whiteElo - BlackElo) AS elo_diff,
+       0.5 AS weight
+FROM Chess.game
+WHERE whiteElo IS NOT NULL
+  AND BlackElo IS NOT NULL
+  AND ABS(whiteElo - BlackElo) > 400",Results do not match,13.307150416076183
+1,evals_hard,False,MISMATCH,lahman_2014,"Find the top 50 non-reliever pitchers by ERA (Earned Run Average). Show the player's first and last name, the year, the innings pitched, and the ERA.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.IPouts >= 150 ORDER BY ERA ASC LIMIT 50","SELECT pl.nameFirst, pl.nameLast, p.yearID, p.IPouts/3.0 AS inningsPitched, p.ERA
+FROM lahman_2014.pitching p
+JOIN lahman_2014.players pl ON p.playerID = pl.playerID
+WHERE p.GS > 0
+ORDER BY p.ERA ASC
+LIMIT 50;",Results do not match,19.828311000019312
+2,evals_hard,False,SQL_ERROR,ErgastF1,Find the top 30 constructors with the highest number of races where at least two cars started.,"SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId AND r1.constructorId = r2.constructorId AND r1.resultId < r2.resultId JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId WHERE r1.grid > 0 AND r2.grid > 0 GROUP BY c.constructorId, c.name ORDER BY races_at_least_two_started DESC LIMIT 30","WITH races_with_2plus AS (
+  SELECT raceId
+  FROM f1.results
+  WHERE grid > 0
+  GROUP BY raceId
+  HAVING COUNT(DISTINCT driverId) >= 2
+)
+SELECT c.constructorId,
+       c.name,
+       COUNT(DISTINCT r.raceId) AS race_count
+FROM f1.results r
+JOIN f1.constructors c ON r.constructorId = c.constructorId
+WHERE r.grid > 0
+  AND r.raceId IN (SELECT raceId FROM races_with_2plus)
+GROUP BY c.constructorId, c.name
+ORDER BY race_count DESC
+LIMIT 30;","Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean ""ErgastF1.results""?
+
+LINE 3:   FROM f1.results
+               ^",12.076085333712399
+3,evals_hard,False,MISMATCH,lahman_2014,Find the names and years of the top 50 Hall of Fame players by career hits.,"SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN lahman_2014.players p ON h.hofID = p.hofID JOIN lahman_2014.batting b ON p.playerID = b.playerID WHERE h.inducted = 'Y' AND h.category = 'Player' GROUP BY p.playerID, p.nameFirst, p.nameLast, h.yearID HAVING SUM(b.AB) >= 100 ORDER BY career_hits DESC LIMIT 50","SELECT p.nameFirst || ' ' || p.nameLast AS name,
+       h.yearID AS induction_year,
+       SUM(b.H) AS career_hits
+FROM lahman_2014.players p
+JOIN lahman_2014.halloffame h ON p.hofID = h.hofID
+JOIN lahman_2014.batting b ON p.playerID = b.playerID
+WHERE h.inducted = 'Y' AND h.category = 'Player'
+GROUP BY p.playerID, p.nameFirst, p.nameLast, h.yearID
+ORDER BY career_hits DESC
+LIMIT 50;",Results do not match,21.88712204154581
+4,evals_hard,False,SQL_ERROR,employee,How many employees are part of the 'legacy workforce'?,SELECT COUNT(*) as legacy_workforce_count FROM employee.employees WHERE hire_date < '1990-01-01',SELECT COUNT(*) AS legacy_employee_count FROM employee.employee WHERE hire_date < DATE '1990-01-01';,"Submitted query execution failed: DuckDB error: Catalog Error: Table with name employee does not exist!
+Did you mean ""pubs.employee""?
+
+LINE 1: SELECT COUNT(*) AS legacy_employee_count FROM employee.employee WHERE hire_date < DATE '1990-01-01';
+                                                      ^",10.179371582344174
+5,evals_hard,False,MISMATCH,Airline,What is the on-time performance percentage for each unique airline carrier? Round the percentage to 2 decimal places.,"SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_percentage FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND Diverted = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY UniqueCarrier","SELECT UniqueCarrier,
+       ROUND(100.0 * SUM(CASE WHEN Cancelled = 0 AND DepTime IS NOT NULL AND ArrTime IS NOT NULL AND ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) / COUNT(*), 2) AS on_time_perc
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE (WeatherDelay IS NULL OR WeatherDelay = 0)
+GROUP BY UniqueCarrier
+ORDER BY UniqueCarrier",Results do not match,22.657112042419612
+6,evals_hard,False,MISMATCH,Credit,Calculate the average transaction value.,SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND charge_code != 'RF',SELECT AVG(charge_amt) AS avg_transaction_value FROM Credit.charge WHERE charge_amt IS NOT NULL,Results do not match,14.710773083381355
+7,evals_hard,False,MISMATCH,Chess,"Calculate win rates for White players (with at least 5 games). Return the 30 players with the highest win rates, ordered by win rate descending.","SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY g.white HAVING COUNT(*) >= 5 ORDER BY win_rate DESC LIMIT 30","SELECT white AS player,
+       COUNT(*) AS total_games,
+       SUM(CASE WHEN game_result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+       CAST(SUM(CASE WHEN game_result = '1-0' THEN 1 ELSE 0 END) AS DOUBLE) / COUNT(*) AS win_rate
+FROM Chess.game
+WHERE white IS NOT NULL
+GROUP BY white
+HAVING COUNT(*) >= 5
+ORDER BY win_rate DESC
+LIMIT 30",Results do not match,11.350387792102993
+8,evals_hard,True,NONE,lahman_2014,"Find the top 8 pitchers by WHIP. Show the player's first and last name, the year, the innings pitched, and the WHIP.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.IPouts >= 150 ORDER BY WHIP ASC LIMIT 8","SELECT pl.nameFirst AS first_name, pl.nameLast AS last_name, p.yearID AS year,
+       (p.IPouts/3.0) AS innings_pitched,
+       ((p.BB + p.H) / (p.IPouts/3.0)) AS WHIP
+FROM lahman_2014.pitching p
+JOIN lahman_2014.players pl ON p.playerID = pl.playerID
+WHERE (p.IPouts/3.0) >= 50
+ORDER BY WHIP ASC
+LIMIT 8",,14.696865333244205
+9,evals_hard,False,MISMATCH,Chess,What are the top three openings by games played? Count games separately for each opening_id (do not deduplicate by name).,"SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY o.opening_id, o.name ORDER BY game_count DESC LIMIT 3","SELECT g.opening_id, COUNT(*) AS games_played
+FROM Chess.game AS g
+JOIN Chess.opening AS o ON g.opening_id = o.opening_id
+WHERE LOWER(o.name) NOT LIKE '%french defense%'
+  AND LOWER(o.name) NOT LIKE '%sicilian defense%'
+GROUP BY g.opening_id
+ORDER BY games_played DESC
+LIMIT 3",Results do not match,13.478993957862258
+10,evals_hard,True,NONE,employee,Find salary statistics for departments where salary statistics can be reported. Show me employee count and average salary by department name.,"SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JOIN employee.departments d ON de.dept_no = d.dept_no JOIN employee.employees e ON de.emp_no = e.emp_no JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE de.to_date = '9999-01-01' AND s.to_date = '9999-01-01' GROUP BY d.dept_name HAVING COUNT(DISTINCT e.emp_no) >= 5","SELECT d.dept_name,
+       COUNT(DISTINCT de.emp_no) AS employee_count,
+       AVG(s.salary) AS average_salary
+FROM employee.departments d
+JOIN employee.dept_emp de ON d.dept_no = de.dept_no
+JOIN employee.salaries s ON de.emp_no = s.emp_no
+WHERE de.to_date = DATE '9999-01-01'
+  AND s.to_date = DATE '9999-01-01'
+GROUP BY d.dept_name
+HAVING COUNT(DISTINCT de.emp_no) > 0;",,21.06642920896411
+11,evals_hard,True,NONE,employee,Compare current average salaries between 'Legacy' and 'Recent' workforce.,"SELECT CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END as cohort, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE s.to_date = '9999-01-01' GROUP BY CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END HAVING COUNT(*) >= 10","SELECT CASE WHEN e.hire_date < DATE '1990-01-01' THEN 'Legacy' ELSE 'Recent' END AS workforce,
+       AVG(s.salary) AS avg_salary
+FROM employee.employees e
+JOIN employee.salaries s ON e.emp_no = s.emp_no
+WHERE s.to_date = DATE '9999-01-01'
+GROUP BY workforce",,32.91726475022733
+12,evals_hard,False,AGENT_ERROR,lahman_2014,"Find the top 50 starting pitchers by games started, showing their season statistics. I want to see the player's first and last name, the year, the games started, the innings pitched, and the earned runs.","SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2014.pitching pi JOIN lahman_2014.players p ON pi.playerID = p.playerID WHERE pi.GS > 0 AND pi.IPouts >= 150 ORDER BY pi.GS DESC LIMIT 50",,Agent error: Max iterations reached,33.24714491702616
+13,evals_hard,True,NONE,Credit,"Identify the top 30 members (first, last) by cumulative lifetime charges.","SELECT m.firstname, m.lastname, SUM(c.charge_amt) as lifetime_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_code != 'RF' AND c.charge_amt != 0.01 GROUP BY m.member_no, m.firstname, m.lastname ORDER BY lifetime_charges DESC LIMIT 30","SELECT m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt WHEN c.charge_amt = 0.01 THEN 0 ELSE c.charge_amt END) AS total_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no GROUP BY m.member_no, m.firstname, m.lastname ORDER BY total_charges DESC LIMIT 30",,20.106241958215833
+14,evals_hard,False,MISMATCH,CraftBeer,"Find the top 50 session beers by ABV. Note: ABV is stored as a decimal (e.g., 0.05 for 5%). I'd like to see their name, abv, style, and brewery name.","SELECT b.name as beer_name, b.abv, b.style, br.name as brewery FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv < 0.05 AND b.abv IS NOT NULL ORDER BY b.abv DESC LIMIT 50","SELECT b.name, b.abv, b.style, br.name AS brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv IS NOT NULL AND b.ounces IS NOT NULL AND b.ounces >= 12 AND b.abv <= 0.06 ORDER BY b.abv DESC LIMIT 50",Results do not match,19.566345292143524
+15,evals_hard,False,AGENT_ERROR,financial,Find the default rate for loans.,"SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) as default_rate_pct FROM financial.loan",,Agent error: Max iterations reached,31.33603904210031
+16,evals_hard,False,MISMATCH,Airline,"Analyze completed flights by day of week for January 2016. Give total flights, on-time flights, and average delay in minutes by day of week.","SELECT DayOfWeek, COUNT(*) as total_flights, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time_flights, AVG(ArrDelayMinutes) as avg_delay FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND Month = 1 GROUP BY DayOfWeek","SELECT DayOfWeek,
+       COUNT(*) AS total_flights,
+       SUM(CASE WHEN ArrDelayMinutes <= 0 THEN 1 ELSE 0 END) AS on_time_flights,
+       AVG(ArrDelayMinutes) AS avg_delay_minutes
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Year = 2016
+  AND Month = 1
+  AND Cancelled = 0
+  AND Diverted = 0
+GROUP BY DayOfWeek
+ORDER BY DayOfWeek;",Results do not match,16.08437795843929
+17,evals_hard,False,AGENT_ERROR,financial,"Calculate the loan portfolio size by status for each loan classification. Show the loan classification, count, and total amount.","SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-Performing' END as loan_classification, COUNT(*) as loan_count, SUM(amount) as total_amount FROM financial.loan GROUP BY CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-Performing' END",,Agent error: Max iterations reached,28.905114999972284
+18,evals_hard,False,SQL_ERROR,ErgastF1,Find the top 30 driver names by fastest lap time.,"SELECT d.forename, d.surname, MIN(lt.milliseconds) as fastest_lap_ms FROM ErgastF1.lapTimes lt JOIN ErgastF1.drivers d ON lt.driverId = d.driverId WHERE lt.milliseconds >= 60000 GROUP BY d.driverId, d.forename, d.surname ORDER BY fastest_lap_ms ASC LIMIT 30","SELECT d.driver_name, MIN(l.lap_time) AS fastest_lap
+FROM Racing.lap_times l
+JOIN Racing.drivers d ON l.driver_id = d.driver_id
+GROUP BY d.driver_name
+ORDER BY fastest_lap ASC
+LIMIT 30","Submitted query execution failed: DuckDB error: Catalog Error: Table with name lap_times does not exist!
+Did you mean ""ErgastF1.lapTimes""?
+
+LINE 2: FROM Racing.lap_times l
+             ^",15.08248604182154
+19,evals_hard,False,MISMATCH,employee,"Calculate the current headcount by department based on their current department assignment, counting each employee only once based on their most recent department assignment. Be sure to return departments by name, not id.","SELECT d.dept_name, COUNT(DISTINCT de.emp_no) as headcount FROM employee.dept_emp de JOIN employee.departments d ON de.dept_no = d.dept_no WHERE de.to_date = '9999-01-01' AND de.emp_no NOT IN (SELECT emp_no FROM employee.dept_manager WHERE to_date = '9999-01-01') GROUP BY d.dept_name","SELECT d.dept_name, COUNT(DISTINCT de.emp_no) AS headcount
+FROM employee.dept_emp de
+JOIN employee.departments d ON de.dept_no = d.dept_no
+WHERE de.to_date = DATE '9999-01-01'
+GROUP BY d.dept_name
+ORDER BY d.dept_name",Results do not match,22.384137749671936
+20,evals_hard,True,NONE,CraftBeer,Identify production breweries that should be analyzed separately.,"SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery_id GROUP BY br.id, br.name HAVING COUNT(b.id) > 20","SELECT b.id, b.name, b.city, b.state, COUNT(*) AS beer_count
+FROM CraftBeer.breweries b
+JOIN CraftBeer.beers be ON be.brewery_id = b.id
+GROUP BY b.id, b.name, b.city, b.state
+HAVING COUNT(*) > 20
+ORDER BY beer_count DESC",,22.439026624895632
+21,evals_hard,False,MISMATCH,Credit,"Find the top 50 member-quarters by charge count. I want to see the member's first and last name, the statement number, the charge count, and the total charges.","SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY m.member_no, m.firstname, m.lastname, c.statement_no ORDER BY charge_count DESC LIMIT 50","SELECT m.firstname, m.lastname, c.statement_no, DATE_TRUNC('quarter', c.charge_dt) AS quarter, COUNT(*) AS charge_count, SUM(c.charge_amt) AS total_charges FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_code <> 'RF' AND c.charge_amt >= 5 AND c.charge_amt <> 0.01 GROUP BY m.firstname, m.lastname, c.statement_no, quarter ORDER BY charge_count DESC LIMIT 50",Results do not match,26.535978582687676
+22,evals_hard,False,MISMATCH,CraftBeer,"List 'high-gravity' beers along with their brewery information and abv. Note: ABV is stored as a decimal (e.g., 0.095 for 9.5%).","SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv >= 0.095 ORDER BY b.abv DESC","SELECT b.name AS beer_name, b.abv, br.name AS brewery_name, br.city, br.state FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.abv > 0.07 AND b.abv IS NOT NULL ORDER BY b.abv DESC",Results do not match,22.223250165581703
+23,evals_hard,True,NONE,world,"Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclude countries with population = 0. Show their name, population, and gross national product.","SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0","SELECT Name, Population, GNP FROM world.Country WHERE Population > 0 AND Population < 100000 ORDER BY Population",,14.7880680821836
+24,evals_hard,True,NONE,Hockey,"Find the top 50 NHL players by average goals per season, only including players with at least 5 seasons.","SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT s.year) as seasons FROM Hockey.Scoring s JOIN Hockey.Master m ON s.playerID = m.playerID WHERE s.lgID = 'NHL' GROUP BY s.playerID, m.firstName, m.lastName HAVING COUNT(DISTINCT s.year) >= 5 ORDER BY avg_goals_per_season DESC LIMIT 50","WITH player_stats AS (
+ SELECT s.playerID,
+        SUM(s.G) AS total_goals,
+        COUNT(DISTINCT s.year) AS seasons
+ FROM Hockey.Scoring s
+ WHERE s.lgID <> 'WHA'
+ GROUP BY s.playerID
+ HAVING COUNT(DISTINCT s.year) >= 5
+)
+SELECT m.firstName, m.lastName, ps.total_goals, ps.seasons,
+       CAST(ps.total_goals AS DOUBLE) / ps.seasons AS avg_goals_per_season
+FROM player_stats ps
+JOIN Hockey.Master m ON ps.playerID = m.playerID
+ORDER BY avg_goals_per_season DESC
+LIMIT 50;",,12.724164750427008
+25,evals_hard,True,NONE,financial,"Aggregate loan statistics for districts 70-77 as a single 'Eastern Region' entity, showing total loans and average loan amount for performing loans only.","SELECT 'Eastern Region' as region, COUNT(l.loan_id) as total_loans, AVG(l.amount) as avg_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id WHERE d.district_id BETWEEN 70 AND 77 AND l.status = 'A'","SELECT 'Eastern Region' AS region, COUNT(*) AS total_loans, AVG(l.amount) AS avg_loan_amount FROM financial.loan l JOIN financial.account a ON l.account_id = a.account_id JOIN financial.district d ON a.district_id = d.district_id WHERE l.status = 'A' AND d.district_id BETWEEN 70 AND 77",,29.30253608431667
+26,evals_hard,False,AGENT_ERROR,ErgastF1,"List each constructor-season combination where the constructor scored more than 100 total points, for seasons after when points systems became comparable. Show the constructor name, year, and total points. Aggregate points from individual race results.","SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors c ON r.constructorId = c.constructorId JOIN ErgastF1.races ra ON r.raceId = ra.raceId WHERE ra.year >= 2010 AND r.position IS NOT NULL AND r.position > 0 GROUP BY c.constructorId, c.name, ra.year HAVING SUM(r.points) > 100",,Agent error: Max iterations reached,31.945231458172202
+27,evals_hard,True,NONE,Chess,"Find the top three draw results in chess games, grouped by opening id and name.","SELECT o.name as opening_name, COUNT(*) as draw_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE g.game_result = '1/2-1/2' AND o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' GROUP BY o.opening_id, o.name ORDER BY draw_count DESC LIMIT 3","SELECT g.opening_id, o.name, COUNT(*) AS draw_count
+FROM Chess.game g
+JOIN Chess.opening o ON g.opening_id = o.opening_id
+WHERE g.game_result = '1/2-1/2'
+  AND o.name NOT ILIKE '%French Defense%'
+  AND o.name NOT ILIKE '%Sicilian Defense%'
+GROUP BY g.opening_id, o.name
+ORDER BY draw_count DESC
+LIMIT 3",,16.83409662451595
+28,evals_hard,False,SQL_ERROR,ErgastF1,Calculate total points by constructor and year for each season from when points systems became comparable.,"SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.constructors c ON r.constructorId = c.constructorId JOIN ErgastF1.races ra ON r.raceId = ra.raceId WHERE r.position IS NOT NULL AND r.position > 0 AND ra.year >= 2010 GROUP BY c.constructorId, c.name, ra.year","SELECT ra.year AS season_year,
+       c.name AS constructor_name,
+       SUM(r.points) AS total_points
+FROM ""ErgastF1"".results r
+JOIN ""ErgastF1"".races ra ON r.raceId = ra.raceId
+JOIN ""ErgastF1"".constructors c ON r.constructorId = c.constructorId
+WHERE ra.year >= 2010               -- points systems comparable from 2010 onward
+  AND ra.sprint_date IS NULL        -- exclude sprint race points (introduced 2021)
+GROUP BY ra.year, c.name
+ORDER BY ra.year, total_points DESC;","Submitted query execution failed: DuckDB error: Binder Error: Table ""ra"" does not have a column named ""sprint_date""
+
+Candidate bindings: : ""date""
+
+LINE 8:   AND ra.sprint_date IS NULL        -- exclude sprint race points...
+              ^",16.724431792274117
+29,evals_hard,False,NO_SUBMISSION,world,List major cities along with their country information.,"SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN world.Country co ON ci.CountryCode = co.Code WHERE ci.Population > 2000000",,No answer submitted (agent did not call submit_answer),24.42604216746986
+30,evals_hard,False,MISMATCH,Hockey,"Find the top 50 NHL players by career points, only including players with at least 5 seasons.","SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.Scoring s JOIN Hockey.Master m ON s.playerID = m.playerID WHERE s.lgID = 'NHL' GROUP BY s.playerID, m.firstName, m.lastName HAVING COUNT(DISTINCT s.year) >= 5 ORDER BY career_points DESC LIMIT 50","WITH player_seasons AS (
+    SELECT playerID, year, SUM(Pts) AS season_pts
+    FROM Hockey.Scoring
+    WHERE lgID = 'NHL'
+    GROUP BY playerID, year
+),
+player_career AS (
+    SELECT playerID,
+           COUNT(DISTINCT year) AS seasons,
+           SUM(season_pts) AS career_pts
+    FROM player_seasons
+    GROUP BY playerID
+    HAVING COUNT(DISTINCT year) >= 5
+)
+SELECT m.firstName,
+       m.lastName,
+       c.career_pts,
+       c.seasons
+FROM player_career c
+JOIN Hockey.Master m ON c.playerID = m.playerID
+ORDER BY c.career_pts DESC
+LIMIT 50;",Results do not match,15.789440708234906
+31,evals_hard,True,NONE,Airline,"Find the top route with the most severe delays. Only count completed flights. Show the origin, destination, and number of severe delays.","SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinutes > 180 AND DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY Origin, Dest ORDER BY severe_delay_count DESC LIMIT 1","SELECT Origin,
+       Dest,
+       SUM(CASE WHEN ArrDelay > 180 AND (WeatherDelay IS NULL OR WeatherDelay = 0) THEN 1 ELSE 0 END) AS severe_delay_count
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Cancelled = 0
+  AND DepTime IS NOT NULL
+  AND ArrTime IS NOT NULL
+GROUP BY Origin, Dest
+HAVING COUNT(*) >= 50
+ORDER BY severe_delay_count DESC
+LIMIT 1",,30.10401695780456
+32,evals_hard,False,MISMATCH,financial,"Show the region, loan count, total loan amount, and average loan amount for each loan classification. Label Prague as 'Prague' and other districts as 'Other Districts'.","SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, SUM(l.amount) as total_loan_amount, AVG(l.amount) as avg_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id GROUP BY CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END","SELECT CASE WHEN d.A3 = 'Prague' THEN 'Prague' ELSE 'Other Districts' END AS region,
+       l.status AS loan_classification,
+       COUNT(*) AS loan_count,
+       SUM(l.amount) AS total_loan_amount,
+       AVG(l.amount) AS average_loan_amount
+FROM financial.loan l
+JOIN financial.account a ON l.account_id = a.account_id
+JOIN financial.district d ON a.district_id = d.district_id
+GROUP BY 1, 2",Results do not match,29.978519749827683
+33,evals_hard,False,MISMATCH,lahman_2014,"Find the top 50 Hall of Fame voting results by BBWAA with at least 75% support, showing vote percentages. Give the player's first and last name, the year, the vote percentage.","SELECT p.nameFirst, p.nameLast, h.yearID, CAST(h.votes AS REAL) / h.ballots * 100 as vote_percentage FROM lahman_2014.halloffame h JOIN lahman_2014.players p ON h.hofID = p.hofID WHERE h.votedBy = 'BBWAA' AND h.ballots > 0 AND CAST(h.votes AS REAL) / h.ballots >= 0.75 ORDER BY vote_percentage DESC LIMIT 50","SELECT p.namefirst, p.namelast, h.yearid,
+       (h.votes * 100.0 / h.ballots) AS vote_percentage
+FROM lahman_2014.halloffame AS h
+JOIN lahman_2014.players AS p ON h.hofid = p.playerid
+WHERE h.inducted = 'Y'
+  AND h.category = 'Player'
+  AND h.votedby = 'BBWAA'
+  AND (h.votes * 100.0 / h.ballots) >= 75
+ORDER BY vote_percentage DESC
+LIMIT 50;",Results do not match,50.835342708043754
+34,evals_hard,False,MISMATCH,financial,"Find the top 30 accounts by total absolute transaction volume, excluding legacy transactions?","SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id = t.account_id WHERE (t.k_symbol IS NULL OR t.k_symbol != 'UROK') AND t.date >= '1995-01-01' GROUP BY a.account_id ORDER BY total_volume DESC LIMIT 30","SELECT account_id, SUM(ABS(amount)) AS total_volume FROM financial.trans WHERE date >= '1995-01-01' GROUP BY account_id ORDER BY total_volume DESC LIMIT 30",Results do not match,9.745465625077486
+35,evals_hard,False,MISMATCH,Airline,"Show carrier performance with counts of on-time, moderately delayed, and severely delayed flights.","SELECT UniqueCarrier, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time, SUM(CASE WHEN ArrDelayMinutes > 15 AND ArrDelayMinutes <= 180 THEN 1 ELSE 0 END) as moderate_delays, SUM(CASE WHEN ArrDelayMinutes > 180 THEN 1 ELSE 0 END) as severe_delays FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL AND Cancelled = 0 AND (WeatherDelay IS NULL OR WeatherDelay = 0) GROUP BY UniqueCarrier","SELECT UniqueCarrier,
+       SUM(CASE WHEN ArrivalDelayGroups = 0 THEN 1 ELSE 0 END) AS on_time,
+       SUM(CASE WHEN ArrivalDelayGroups BETWEEN 1 AND 11 THEN 1 ELSE 0 END) AS moderate_delay,
+       SUM(CASE WHEN ArrivalDelayGroups = 12 THEN 1 ELSE 0 END) AS severe_delay
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Cancelled = 0
+  AND ArrivalDelayGroups IS NOT NULL
+GROUP BY UniqueCarrier
+ORDER BY UniqueCarrier",Results do not match,12.065809125080705
+36,evals_hard,False,SQL_ERROR,world,Find the top 50 countries by population density. Show names and densities.,"SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population > 0 AND c.SurfaceArea > 0 ORDER BY population_density DESC LIMIT 50","SELECT name AS country, (population / area) AS density FROM world.countries ORDER BY density DESC LIMIT 50","Submitted query execution failed: DuckDB error: Catalog Error: Table with name countries does not exist!
+Did you mean ""Country""?
+
+LINE 1: ...ELECT name AS country, (population / area) AS density FROM world.countries ORDER BY density DESC LIMIT 50
+                                                                      ^",16.51372416689992
+37,evals_hard,False,MISMATCH,employee,Compare average salaries by gender for current employees.,"SELECT e.gender, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no WHERE s.to_date = '9999-01-01' GROUP BY e.gender HAVING COUNT(*) >= 10","WITH latest_dept AS (
+ SELECT d.emp_no, d.dept_no
+ FROM employee.dept_emp d
+ JOIN (
+   SELECT emp_no, MAX(to_date) AS max_to
+   FROM employee.dept_emp
+   GROUP BY emp_no
+ ) m ON d.emp_no = m.emp_no AND d.to_date = m.max_to
+),
+latest_title AS (
+ SELECT t.emp_no, t.title
+ FROM employee.titles t
+ JOIN (
+   SELECT emp_no, MAX(to_date) AS max_to
+   FROM employee.titles
+   GROUP BY emp_no
+ ) m ON t.emp_no = m.emp_no AND t.to_date = m.max_to
+),
+current_salaries AS (
+ SELECT s.emp_no, s.salary
+ FROM employee.salaries s
+ WHERE s.to_date = DATE '9999-01-01'
+),
+emp_data AS (
+ SELECT e.emp_no, e.gender, e.hire_date,
+        d.dept_no, t.title, s.salary,
+        DATE_DIFF('year', e.hire_date, CURRENT_DATE) AS tenure_years
+ FROM employee.employees e
+ JOIN current_salaries s USING (emp_no)
+ LEFT JOIN latest_dept d USING (emp_no)
+ LEFT JOIN latest_title t USING (emp_no)
+),
+grouped AS (
+ SELECT gender, dept_no, title, tenure_years,
+        AVG(salary) AS avg_sal,
+        COUNT(*) AS cnt
+ FROM emp_data
+ GROUP BY gender, dept_no, title, tenure_years
+),
+final AS (
+ SELECT gender,
+        AVG(avg_sal) AS avg_salary,
+        SUM(cnt) AS employee_count
+ FROM grouped
+ GROUP BY gender
+ HAVING SUM(cnt) >= 10
+)
+SELECT gender,
+       avg_salary,
+       employee_count,
+       avg_salary - AVG(avg_salary) OVER () AS Difference
+FROM final
+ORDER BY gender;",Results do not match,21.05173054151237
+38,evals_hard,False,MISMATCH,CraftBeer,"Find beers with 'extreme' bitterness. Return the beer name, IBU, style, and brewery name.","SELECT b.name as beer_name, b.ibu, b.style, br.name as brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.brewery_id = br.id WHERE b.ibu > 100","SELECT b.name AS beer_name,
+       b.ibu,
+       b.style,
+       br.name AS brewery_name
+FROM CraftBeer.beers b
+JOIN CraftBeer.breweries br ON b.brewery_id = br.id
+WHERE b.ibu >= 80
+ORDER BY b.ibu DESC",Results do not match,23.660574999637902
+39,evals_hard,False,MISMATCH,Airline,Find all origin/destination airport pairs that are thin routes. How many such pairs are there?,"SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepTime IS NOT NULL AND ArrTime IS NOT NULL GROUP BY Origin, Dest HAVING COUNT(*) < 50) thin_routes","SELECT COUNT(*) AS thin_route_pairs FROM (
+  SELECT Origin, Dest
+  FROM Airline.On_Time_On_Time_Performance_2016_1
+  WHERE Cancelled = 0
+    AND Diverted = 0
+    AND DepTime IS NOT NULL
+    AND ArrTime IS NOT NULL
+  GROUP BY Origin, Dest
+  HAVING COUNT(*) < 50
+) AS t",Results do not match,11.16516974940896
+40,evals_hard,True,NONE,CraftBeer,Count the number of beers missing IBU data that should be flagged for data quality analysis.,SELECT COUNT(*) as missing_ibu_count FROM CraftBeer.beers b WHERE b.ibu IS NULL,SELECT COUNT(*) AS missing_ibu_beer_count FROM CraftBeer.beers WHERE ibu IS NULL,,7.748566792346537
+41,evals_hard,True,NONE,ErgastF1,Find the top 3 F1 rookie drivers ordered by their start count (highest first) then surname (descending).,"SELECT d.forename, d.surname, COUNT(*) as career_starts FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId GROUP BY d.driverId, d.forename, d.surname HAVING COUNT(*) < 20 ORDER BY career_starts DESC, d.surname DESC LIMIT 3","SELECT d.driverId,
+       d.forename,
+       d.surname,
+       cnt.start_count
+FROM (
+    SELECT driverId,
+           COUNT(*) AS start_count
+    FROM ErgastF1.results
+    WHERE driverId IS NOT NULL
+    GROUP BY driverId
+) cnt
+JOIN ErgastF1.drivers d ON d.driverId = cnt.driverId
+WHERE cnt.start_count < 20
+ORDER BY cnt.start_count DESC,
+         d.surname DESC
+LIMIT 3;",,15.021100125275552
+42,evals_hard,False,MISMATCH,Credit,Find the top 50 statements by net amount.,"SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN c.charge_code = 'RF' THEN c.charge_amt ELSE 0 END) as refunds, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) - SUM(CASE WHEN c.charge_code = 'RF' THEN c.charge_amt ELSE 0 END) as net_amount FROM Credit.charge c WHERE c.charge_amt != 0.01 GROUP BY c.statement_no ORDER BY net_amount DESC LIMIT 50","SELECT s.statement_no, s.member_no, s.statement_dt, s.due_dt,
+       SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS net_amount
+FROM Credit.statement s
+LEFT JOIN Credit.charge c ON c.statement_no = s.statement_no
+GROUP BY s.statement_no, s.member_no, s.statement_dt, s.due_dt
+ORDER BY net_amount DESC
+LIMIT 50",Results do not match,28.75352658238262
+43,evals_hard,False,SQL_ERROR,imdb_MovieLens,"Identify 'super users' by id in the movie ratings data, showing the number of ratings they've given.","SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000","SELECT userId, COUNT(*) AS rating_count
+FROM movie_ratings.ratings
+WHERE rating IS NOT NULL
+  AND rating BETWEEN 0.5 AND 5.0
+  AND timestamp >= 946684800
+GROUP BY userId
+HAVING COUNT(*) >= 1000
+ORDER BY rating_count DESC, userId ASC","Submitted query execution failed: DuckDB error: Catalog Error: Table with name ratings does not exist!
+Did you mean ""trains.trains""?
+
+LINE 2: FROM movie_ratings.ratings
+             ^",36.91463004145771
+44,evals_hard,True,NONE,world,Find country names where the sum of language percentages exceeds 100% due to multilingualism.,SELECT co.Name FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode GROUP BY co.Name HAVING SUM(cl.Percentage) > 100,"SELECT c.Name, SUM(cl.Percentage) AS total_pct FROM world.Country c JOIN world.CountryLanguage cl ON c.Code = cl.CountryCode GROUP BY c.Name HAVING SUM(cl.Percentage) > 100",,12.905948250554502
+45,evals_hard,True,NONE,Credit,Find providers with fewer than 100 total charges that should be aggregated as 'Long tail providers'. I want to see the provider number and the charge count.,"SELECT p.provider_no, COUNT(*) as charge_count FROM Credit.charge c JOIN Credit.provider p ON c.provider_no = p.provider_no WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY p.provider_no HAVING COUNT(*) < 100","SELECT provider_no, COUNT(*) AS charge_count
+FROM Credit.charge
+WHERE (charge_code IS NULL OR charge_code <> 'RF')
+GROUP BY provider_no
+HAVING COUNT(*) < 100
+ORDER BY provider_no",,27.176929457113147
+46,evals_hard,False,MISMATCH,financial,What is the total amount of performing loans by district name?,"SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d.district_id = a.district_id JOIN financial.loan l ON a.account_id = l.account_id WHERE l.status = 'A' AND d.district_id != 1 GROUP BY d.A2","SELECT d.""A3"" AS district_name,
+       SUM(l.amount) AS total_performing_loan_amount
+FROM financial.loan l
+JOIN financial.account a ON l.account_id = a.account_id
+JOIN financial.district d ON a.district_id = d.district_id
+WHERE l.status = 'A'
+GROUP BY d.""A3""
+ORDER BY d.""A3""",Results do not match,47.20849074982107
+47,evals_hard,False,AGENT_ERROR,ErgastF1,"Find the top 30 F1 drivers (first name and last name) by race completion rate, only including drivers with at least 50 race starts. Include total races, completed races, and completion rate.","SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 ELSE 0 END) as completed_races, CAST(SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as completion_rate FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId GROUP BY d.driverId, d.forename, d.surname HAVING COUNT(*) >= 50 ORDER BY completion_rate DESC LIMIT 30",,Agent error: Max iterations reached,42.57868541684002
+48,evals_hard,True,NONE,world,Find countries (names and codes) with multiple official languages. Show the language count.,"SELECT co.Code, co.Name, COUNT(cl.Language) as language_count FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode WHERE cl.IsOfficial = 'T' GROUP BY co.Code, co.Name HAVING COUNT(cl.Language) > 1","SELECT c.Name, c.Code, COUNT(cl.Language) AS language_count
+FROM world.Country c
+JOIN world.CountryLanguage cl ON c.Code = cl.CountryCode
+WHERE cl.IsOfficial = 'T'
+GROUP BY c.Name, c.Code
+HAVING COUNT(cl.Language) > 1
+ORDER BY language_count DESC;",,9.832355374470353
+49,evals_hard,True,NONE,Credit,"Find the top 25 members (member_no, first name, last name, and net_charge_volume) by net charge volume, where refunds (charge_code 'RF') are subtracted from gross charges.","SELECT m.member_no, m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) as net_charge_volume FROM Credit.member m JOIN Credit.charge c ON m.member_no = c.member_no WHERE c.charge_amt != 0.01 GROUP BY m.member_no, m.firstname, m.lastname ORDER BY net_charge_volume DESC LIMIT 25","SELECT c.member_no,
+       m.firstname,
+       m.lastname,
+       SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS net_charge_volume
+FROM Credit.charge AS c
+JOIN Credit.member AS m ON c.member_no = m.member_no
+GROUP BY c.member_no, m.firstname, m.lastname
+ORDER BY net_charge_volume DESC
+LIMIT 25",,10.673109416849911
+50,evals_hard,True,NONE,world,"List the top 50 capital cities by population, along with their countries.","SELECT co.Name as country, ci.Name as capital_city, ci.Population FROM world.Country co JOIN world.City ci ON co.Capital = ci.ID WHERE ci.Population IS NOT NULL ORDER BY ci.Population DESC LIMIT 50","SELECT c.Name AS CapitalCity, co.Name AS Country, c.Population
+FROM world.City c
+JOIN world.Country co ON co.Capital = c.ID
+WHERE co.Capital IS NOT NULL
+ORDER BY c.Population DESC
+LIMIT 50",,9.756563624367118
+51,evals_hard,False,NO_SUBMISSION,CraftBeer,Identify the top 30 microbreweries with the smallest beer catalogs.,"SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery_id GROUP BY br.id, br.name HAVING COUNT(b.id) < 3 ORDER BY beer_count ASC, br.name LIMIT 30",,No answer submitted (agent did not call submit_answer),20.672774832695723
+52,evals_hard,True,NONE,Airline,"What is the count of diverted flights by route (origin-destination pair), including only routes with more than 5 diversions?","SELECT Origin, Dest, COUNT(*) as diverted_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE Diverted = 1 GROUP BY Origin, Dest HAVING COUNT(*) > 5","SELECT Origin, Dest, COUNT(*) AS diverted_count
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Diverted = 1
+GROUP BY Origin, Dest
+HAVING COUNT(*) > 5
+ORDER BY diverted_count DESC",,5.848216833546758
+53,evals_hard,False,SQL_ERROR,Accidents,"Count accidents by administrative unit, only for units with more than 100 accidents for statistical significance.","SELECT n.upravna_enota, COUNT(*) as accident_count FROM Accidents.nesreca n GROUP BY n.upravna_enota HAVING COUNT(*) > 100","SELECT upravna_enota, COUNT(*) AS accident_count FROM ""Accidents"".""accident_events"" WHERE investigation_complete = true AND injury_count > 0 GROUP BY upravna_enota HAVING COUNT(*) > 100","Submitted query execution failed: DuckDB error: Catalog Error: Table with name accident_events does not exist!
+Did you mean ""upravna_enota""?
+
+LINE 1: SELECT upravna_enota, COUNT(*) AS accident_count FROM ""Accidents"".""accident_events"" WHERE investigation_complete...
+                                                              ^",26.18180908355862
+54,evals_hard,True,NONE,financial,"Find district names (A2) with fewer than 50 accounts that should be aggregated as 'Other' for reporting, as well as their account counts.","SELECT d.A2 as district_name, COUNT(a.account_id) as account_count FROM financial.district d LEFT JOIN financial.account a ON d.district_id = a.district_id GROUP BY d.district_id, d.A2 HAVING COUNT(a.account_id) < 50","SELECT d.A2 AS district_name,
+       COUNT(a.account_id) AS account_count,
+       'Other' AS category
+FROM financial.account a
+JOIN financial.district d ON a.district_id = d.district_id
+GROUP BY d.A2, d.district_id
+HAVING COUNT(a.account_id) < 50
+ORDER BY account_count DESC;",,21.10837195813656
+55,evals_hard,False,NO_SUBMISSION,CraftBeer,"For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate average IBU by style.","SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style",,No answer submitted (agent did not call submit_answer),31.888219833374023
+56,evals_hard,False,MISMATCH,lahman_2014,"Find the top 10 batters (name, year) by batting average (H/AB).","SELECT p.nameFirst, p.nameLast, b.yearID, CAST(b.H AS REAL) / b.AB as batting_avg FROM lahman_2014.batting b JOIN lahman_2014.players p ON b.playerID = p.playerID WHERE b.AB >= 100 ORDER BY batting_avg DESC LIMIT 10","SELECT p.nameFirst || ' ' || p.nameLast AS name,
+       b.yearID AS year,
+       CAST(b.H AS DOUBLE) / NULLIF(b.AB,0) AS batting_average
+FROM lahman_2014.batting b
+JOIN lahman_2014.players p ON b.playerID = p.playerID
+WHERE b.AB >= 100
+ORDER BY batting_average DESC
+LIMIT 10",Results do not match,9.310103874653578
+57,evals_hard,False,MISMATCH,Credit,"Group charges by spending type. Show the spending_type, charge_count, and total_amount.","SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionary' ELSE 'Other' END as spending_type, COUNT(*) as charge_count, SUM(c.charge_amt) as total_amount FROM Credit.charge c WHERE c.charge_amt != 0.01 AND c.charge_code != 'RF' GROUP BY CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionary' ELSE 'Other' END","WITH filtered AS (
+    SELECT
+        CASE
+            WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential'
+            WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionary'
+            ELSE 'Other'
+        END AS spending_type,
+        c.charge_amt,
+        c.charge_code
+    FROM Credit.charge AS c
+    WHERE c.charge_amt <> 0.01               -- exclude test transactions
+      AND c.charge_amt >= 5                 -- exclude micro‑transactions
+)
+SELECT
+    spending_type,
+    COUNT(*) FILTER (WHERE charge_code <> 'RF') AS charge_count,
+    SUM(CASE WHEN charge_code = 'RF' THEN -charge_amt ELSE charge_amt END) AS total_amount
+FROM filtered
+GROUP BY spending_type
+ORDER BY spending_type;",Results do not match,11.979614209383726
+58,evals_hard,False,AGENT_ERROR,lahman_2014,"Find the top 50 players by career batting average, only including players with at least 500 career at-bats.","SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2014.players p ON b.playerID = p.playerID WHERE b.AB >= 100 GROUP BY p.playerID, p.nameFirst, p.nameLast HAVING SUM(b.AB) >= 500 ORDER BY career_ba DESC LIMIT 50",,Agent error: Max iterations reached,31.849768875166774
+59,evals_hard,False,AGENT_ERROR,world,"List countries by continent with their dominant languages where language percentage exceeds 90%, showing whether each language is official.","SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode WHERE cl.Percentage > 90",,Agent error: Max iterations reached,25.620543249882758
+60,evals_hard,True,NONE,ErgastF1,"Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position comparisons where both drivers finished. Return raceId, year, constructor name, driver1 surname, driver2 surname, driver1_pos, and driver2_pos.","SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_pos, r2.position as driver2_pos FROM ErgastF1.results r1 JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId AND r1.constructorId = r2.constructorId AND r1.driverId < r2.driverId JOIN ErgastF1.drivers d1 ON r1.driverId = d1.driverId JOIN ErgastF1.drivers d2 ON r2.driverId = d2.driverId JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId JOIN ErgastF1.races ra ON r1.raceId = ra.raceId WHERE r1.position IS NOT NULL AND r2.position IS NOT NULL AND r1.position > 0 AND r2.position > 0 AND ra.year = 2015 AND c.name = 'Mercedes'","SELECT r1.raceId,
+       ra.year,
+       c.name AS constructor_name,
+       d1.surname AS driver1,
+       d2.surname AS driver2,
+       r1.position AS driver1_pos,
+       r2.position AS driver2_pos
+FROM ErgastF1.results r1
+JOIN ErgastF1.results r2 ON r1.raceId = r2.raceId
+JOIN ErgastF1.drivers d1 ON r1.driverId = d1.driverId
+JOIN ErgastF1.drivers d2 ON r2.driverId = d2.driverId
+JOIN ErgastF1.races ra ON r1.raceId = ra.raceId
+JOIN ErgastF1.constructors c ON r1.constructorId = c.constructorId
+WHERE ra.year = 2015
+  AND c.name = 'Mercedes'
+  AND d1.surname = 'Hamilton'
+  AND d2.surname = 'Rosberg'
+  AND r1.position IS NOT NULL
+  AND r2.position IS NOT NULL
+ORDER BY r1.raceId;",,26.59514124970883
+61,evals_hard,False,MISMATCH,financial,"Calculate transaction statistics (total deposits, total deposit amount, and average deposit amount).","SELECT COUNT(*) as total_deposits, SUM(amount) as total_deposit_amount, AVG(amount) as avg_deposit_amount FROM financial.trans WHERE type = 'PRIJEM' AND amount >= 1000 AND k_symbol IS NOT NULL AND k_symbol != 'UROK' AND date >= '1995-01-01'","SELECT COUNT(*) AS total_deposits,
+       SUM(amount) AS total_deposit_amount,
+       AVG(amount) FILTER (WHERE amount >= 1000) AS average_deposit_amount
+FROM financial.trans
+WHERE type = 'PRIJEM';",Results do not match,11.567369250580668
+62,evals_hard,True,NONE,ErgastF1,Find the top 30 F1 drivers by podium finishes.,"SELECT d.forename, d.surname, COUNT(*) as podium_finishes FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = d.driverId WHERE r.position IS NOT NULL AND r.position > 0 AND r.position <= 3 GROUP BY d.driverId, d.forename, d.surname ORDER BY podium_finishes DESC LIMIT 30","SELECT d.driverId, d.forename, d.surname, COUNT(*) AS podiums
+FROM ErgastF1.results r
+JOIN ErgastF1.drivers d ON r.driverId = d.driverId
+WHERE r.position IS NOT NULL AND r.position <= 3
+GROUP BY d.driverId, d.forename, d.surname
+ORDER BY podiums DESC, d.surname, d.forename
+LIMIT 30",,24.92752154171467
+63,evals_hard,False,MISMATCH,Chess,"For each ECO code, show the game count, white wins, black wins, and draws. Only include ECO codes with at least 5 games.","SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHEN g.game_result = '0-1' THEN 1 ELSE 0 END) as black_wins, SUM(CASE WHEN g.game_result = '1/2-1/2' THEN 1 ELSE 0 END) as draws FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE o.name NOT LIKE '%French%' AND o.name NOT LIKE '%Sicilian%' AND g.ECO IS NOT NULL GROUP BY g.ECO HAVING COUNT(*) >= 5","SELECT ECO,
+       COUNT(*) AS game_count,
+       SUM(CASE WHEN game_result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+       SUM(CASE WHEN game_result = '0-1' THEN 1 ELSE 0 END) AS black_wins,
+       SUM(CASE WHEN game_result = '1/2-1/2' THEN 1 ELSE 0 END) AS draws
+FROM Chess.game
+WHERE ECO IS NOT NULL
+GROUP BY ECO
+HAVING COUNT(*) >= 5
+ORDER BY ECO;",Results do not match,26.351436957716942

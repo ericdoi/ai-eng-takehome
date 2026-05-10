@@ -71,3 +71,41 @@ Sensitive values (API key) redacted.
 23. Yes *(to committing the handoff docs)*
 
 24. We should also save this chat's prompts as an artifact for the assignment, omitting the openrouter API key and any other sensitive info. Probably it's not needed to include your responses, only my prompts.
+
+---
+
+## Session 2
+
+1. *(local command: `/clear`)*
+   We're working on context/TODO.md
+
+2. Try it. The openrouter key is [REDACTED]; let's save it in an env file and make sure it's git ignored
+
+3. *(Run 3 completed: 32.8% hard — regression)*
+   we should update the context/issues and context/runs and also the TODO and WORKLOG.
+
+4. *(after Claude proposed Run 5 prompt and offered to fire it)*
+   Let's not fire the next run yet. Update the docs though.
+
+5. I would revert back to run1 state, and take a different approach: currently, the guides are only about rules, and not comprehensive descriptions of what data/tables are in the schema. I suspect it will be more effective to write an llm pipeline to preprocess/index each schema: (1) textualize the tables, including sample rows; (2) use an llm prompt to read the textualized tables as well as the corresponding guide, and write a new comprehensive generated guide tying together the schema and the rules, e.g. encoding tables with their common-name synonyms and the rules in sql form; (3) embed the generated guide for search and make it discoverable via a new tool.
+
+   What do you think about this?
+
+6. yes, write a plan doc.
+
+7. No; we should revert to run1 state first.
+
+8. Try reproducing run 1 to be safe.
+
+9. *(Run 1′ completed: 65.6% easy / 26.6% hard — variance confirmed)*
+   Add that note to RESULTS.md.
+
+10. We probably also need a better debug breakdown. First, did the agent identify the right schema? The right tables? Finally, the right logic?
+
+11. Let's update the RESULTS.md post-hoc with the analyzer results on previous logs.
+
+12. much better. let's update the worklog
+
+13. let's make sure the docs contain what's needed for a handoff.
+
+14. please update SESSION_PROMPTS.md with the prompts in this session. you can add a new section
