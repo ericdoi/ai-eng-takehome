@@ -93,4 +93,4 @@ Start time: 2:03 pm JST
 * **Easy split Run 8** (`logs/run_20260510_085143/`): **51/64 easy (79.7%)**, up from 40/64 baseline (+11 cases, +17 pp). No easy-specific tuning done — gains are purely from general fixes. Navigation: schema 98%, tables 95%, logic 80%. 13 failures: ErgastF1 (3), Credit (3), world (2), Chess (2), CraftBeer (1), Airline (1), lahman_2014 (1).
 * **WRAPUP.md written:** Covers problem framing (easy vs hard split distinction), scores, approach (both phases, all 8 fixes), run-progression funnel table with explanation, what worked, what didn't work (search_columns regression, prompt-engineering dead end, superseded search_guides approach), remaining failure diagnosis by pattern, conclusions, what I'd do next, design decisions/tradeoffs including strengthened generalization argument.
 
-End time: 6:06 pm JST
+End time: 6:03 pm JST
