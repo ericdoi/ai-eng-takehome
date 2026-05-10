@@ -60,4 +60,15 @@ Start time: 2:03 pm JST
   * Added prominent banner to each `find_schema` response: `SQL SCHEMA NAME (use this exactly): ErgastF1` + usage examples.
   * Updated system prompt: "use schema name verbatim — do NOT try alternative spellings."
   * Two full guide regenerations done (~$1.05 each). 55/76 guides still hit the 8192 token cap but all now include join paths + business rules. Cost note added to script docstring and STATE.md.
+* **Business logic failure analysis (post Run 6):**
+  * Full trace analysis of all 43 Run 6 failures via `scripts/analyze_run.py` output.
+  * Checked source guides (`evaluation/data/guides/`) vs synthesized guides for top failing schemas to distinguish synthesizer errors from genuine source ambiguity.
+  * Key findings:
+    * **financial**: synthesizer bug — "Non-performing loans" rule emits `NOT IN ('C','D')` (the exclusion filter) but labels it as the definition; glossary at bottom correctly says `IN ('C','D')`. Agent gets contradictory signals. Also: rate denominator (`NOT IN ('B')`) never given as explicit SQL.
+    * **Airline**: guide lists lookup-table join paths (L_UNIQUE_CARRIERS, L_AIRPORT_ID, L_WEEKDAYS) without marking them optional; agent uses them for aggregation queries where gold uses raw codes directly.
+    * **employee**: `to_date = '9999-01-01'` sentinel for current salary not in source guide and not surfaced by textualization (only VARCHARs get distinct-value sampling, not DATEs).
+    * **Chess/general**: INNER JOIN to optional tables (opening) silently drops unmatched rows.
+  * Documented in `context/issues/business_logic_failures.md`.
+  * Five-fix plan written to `context/PLAN_business_logic.md`; TODOs added to `TODO.md`.
+  * Strategy: test fixes iteratively — regen top-7 failing schemas first, not all 76.
 * **`scripts/analyze_run.py` upgraded:** Added three-stage navigation funnel (right schema / right tables / right logic), per-case diagnostic indicators (✓/✗ with explored schemas, missed tables, guide names, tool sequence), and funnel columns to CSV output. Key finding from re-running all logs: navigation is not the bottleneck — Run 4 achieved 100% schema and 94% table identification yet only 27% pass rate. Wrong logic (27–43 cases/run) dominates wrong schema (0–8) and wrong tables (0–12) combined in every run. `context/RESULTS.md` updated with full funnel table and this analysis.

@@ -27,10 +27,42 @@ combined in every run. Prompt engineering is abandoned. Full plan: `context/PLAN
 
 - [x] **Run eval, record results** — Run 6: 21/64 (32.8%). Navigation fixed (AGENT_ERROR 11→2). Logic still bottleneck (33/54 correct-table cases wrong).
 
-- [ ] **Improve logic / business-rule application** — top failing schemas: financial (7), Credit (6), Airline (6), lahman_2014 (5), Chess (4), employee (4), ErgastF1 (4)
-  - Spot-check guide quality for top 3 failing schemas; compare gold SQL to agent output
-  - Consider whether guide business-rule section is precise enough (e.g. financial loan status codes)
-  - [ ] Run eval again once guide or prompt improvements are made; target ≥ 30/64 (≥47%)
+- [ ] **Improve logic / business-rule application** — full plan in `context/PLAN_business_logic.md`
+
+  - [ ] **Fix 1 — Synthesis prompt: clearer business rule expression**
+    - Rules must use consistent IDENTIFY vs EXCLUDE framing with unambiguous labels
+    - Rate/ratio rules must include explicit denominator SQL, not just prose
+    - Update `_SYNTHESIS_USER` in `scripts/build_schema_guides.py`
+
+  - [ ] **Fix 2 — Schema textualization: surface date sentinel values**
+    - Extend `textualize_schema()` to detect sentinel-pattern DATE values
+      (years ≥ 9000, epoch zeros, or one value covering > 80% of rows)
+    - Emit as `col  DATE  — sentinel: '9999-01-01' means currently active`
+    - Helps employee schema and any other schema using sentinel dates
+
+  - [ ] **Fix 3 — Synthesis prompt: label joins as REQUIRED vs OPTIONAL**
+    - Guide LLM to annotate each join as `[REQUIRED]` or `[OPTIONAL — display only]`
+    - Optional joins should note: "for grouping/filtering use the raw code column directly"
+    - Prevents agent from joining lookup tables when gold uses raw codes (Airline pattern)
+
+  - [ ] **Fix 4 — Re-run financial guide with Sonnet**
+    - Add `--model` flag to `scripts/build_schema_guides.py`
+    - Regenerate just financial with `anthropic/claude-sonnet-4-6`
+    - Cost: ~$0.01–0.10 for one schema — negligible
+    - If it helps, consider top-5 failing schemas with Sonnet before full regen
+
+  - [ ] **Fix 5 — Agent prompt: LEFT JOIN for lookup/optional tables**
+    - Add one sentence to system prompt in `framework/agent.py`:
+      "When joining a lookup or optional table, use LEFT JOIN — not INNER JOIN —
+      so unmatched rows are not silently dropped."
+
+  - [ ] **Regenerate top-7 failing schemas + re-embed** after Fixes 1–4
+    - financial, Credit, Airline, lahman_2014, Chess, employee, ErgastF1
+    - Use `--schema` flag per schema (or add multi-schema support)
+    - Re-embed after all 7 are regenerated
+
+  - [ ] **Run eval (Run 7)** — if improvement confirmed, regen all 76 guides (~$1.05) then Run 8
+    - Target ≥ 30/64 (≥47%)
 
 ## Phase 0 — Debug harness (nice to have)
 
