@@ -69,30 +69,34 @@ This is general and applies to any schema with lookup/dimension tables.
 
 ---
 
-## Fix 4 — Re-run Financial guide with Sonnet
+## Fix 4 — Use Sonnet for top failing schemas (not all 76)
 
 **Problem:** The financial guide has the most failures (7) and the most complex
 business rules (4-way status classification, rate denominators, district aggregations).
-Haiku is fast and cheap but may not reason carefully enough through multi-condition
-rules.
+Haiku may not reason carefully enough through multi-condition rules.
 
-**Action:** Regenerate just the financial guide using Sonnet:
+**Pricing (OpenRouter, confirmed 2026-05-10):**
+| Model | Input | Output | Full 76-schema regen |
+|-------|-------|--------|----------------------|
+| Haiku 4.5 (`anthropic/claude-haiku-4-5`) | $1.00/1M | $5.00/1M | ~$1.05 |
+| Sonnet 4.6 (`anthropic/claude-sonnet-4-6`) | $3.00/1M | $15.00/1M | ~$3.15 |
+| Opus 4.7 (`anthropic/claude-opus-4-7`) | $5.00/1M | $25.00/1M | ~$5.25 |
+
+**Budget constraint:** ~$12.68 remaining. Full Sonnet regen (~$3.15) plus multiple
+eval runs (~$1.70 each) is feasible but leaves little room for iteration. Full Opus
+regen (~$5.25) is too expensive given the eval budget we need.
+
+**Strategy:** Use Sonnet for top failing schemas only — never Opus, never all 76.
+- Add `--model` flag to `build_schema_guides.py`
+- Regen financial (and optionally Credit, Airline) with Sonnet as part of the
+  top-7 targeted regen; keep Haiku for the remaining schemas
+- If top-7 Sonnet regen shows improvement, evaluate whether full Sonnet regen
+  (all 76) is worth ~$3.15 before running a final eval
+
+**Action:**
 ```bash
-# Change SYNTHESIS_MODEL to 'anthropic/claude-sonnet-4-6' temporarily,
-# or add a --model flag to build_schema_guides.py
-source .env && uv run python scripts/build_schema_guides.py --schema financial
+source .env && uv run python scripts/build_schema_guides.py --schema financial --model anthropic/claude-sonnet-4-6 --skip-embed
 ```
-Then re-embed (--skip-llm won't work for a single schema; re-run embed step manually
-or add a --schema flag to the embed step).
-
-**Cost estimate:**
-- Financial schema textualization: ~3,000 input tokens
-- Synthesis output: ~4,000–6,000 tokens
-- Sonnet pricing on OpenRouter: ~$3/1M input, ~$15/1M output
-- Estimated: ~$0.01–0.10 for one schema — negligible
-
-If this helps, consider re-running the top 4–5 failing schemas with Sonnet and
-measuring impact before doing a full 76-schema Sonnet regeneration (~$3–5 estimated).
 
 ---
 

@@ -45,11 +45,11 @@ combined in every run. Prompt engineering is abandoned. Full plan: `context/PLAN
     - Optional joins should note: "for grouping/filtering use the raw code column directly"
     - Prevents agent from joining lookup tables when gold uses raw codes (Airline pattern)
 
-  - [ ] **Fix 4 — Re-run financial guide with Sonnet**
-    - Add `--model` flag to `scripts/build_schema_guides.py`
-    - Regenerate just financial with `anthropic/claude-sonnet-4-6`
-    - Cost: ~$0.01–0.10 for one schema — negligible
-    - If it helps, consider top-5 failing schemas with Sonnet before full regen
+  - [ ] **Fix 4 — Add `--model` flag; use Sonnet for top failing schemas only**
+    - Add `--model` flag to `scripts/build_schema_guides.py` (default: haiku)
+    - Regen financial (+ Credit, Airline) with `anthropic/claude-sonnet-4-6`
+    - Pricing: Haiku $5/1M out, Sonnet $15/1M out, Opus $25/1M out (too expensive for all 76)
+    - Keep Haiku for remaining 4 of the top-7 schemas; never use Opus for bulk regen
 
   - [ ] **Fix 5 — Agent prompt: LEFT JOIN for lookup/optional tables**
     - Add one sentence to system prompt in `framework/agent.py`:
