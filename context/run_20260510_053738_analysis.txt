@@ -1,0 +1,1593 @@
+
+============================================================
+Run analysis: 128 cases, 0 passed, 128 failed
+============================================================
+
+Failures by type:
+  SQL_ERROR             94
+  MISMATCH              34
+
+Navigation funnel (all cases):
+  Right schema:    1/128  (1%)
+  Right tables:    0/128  (0%)  [of schema-correct: 0/1]
+
+
+Failures by schema (gold query):
+  financial                            16 failures  [SQL_ERROR×9, MISMATCH×7]
+  ErgastF1                             16 failures  [SQL_ERROR×11, MISMATCH×5]
+  CraftBeer                            14 failures  [SQL_ERROR×12, MISMATCH×2]
+  lahman_2014                          14 failures  [SQL_ERROR×10, MISMATCH×4]
+  world                                14 failures  [MISMATCH×7, SQL_ERROR×7]
+  Credit                               14 failures  [SQL_ERROR×10, MISMATCH×4]
+  Airline                              12 failures  [SQL_ERROR×10, MISMATCH×2]
+  Chess                                10 failures  [SQL_ERROR×10]
+  employee                             10 failures  [SQL_ERROR×8, MISMATCH×2]
+  Hockey                                4 failures  [SQL_ERROR×3, MISMATCH×1]
+  imdb_MovieLens                        2 failures  [SQL_ERROR×2]
+  Accidents                             2 failures  [SQL_ERROR×2]
+
+Failures by navigation stage:
+  Wrong schema:  127  (never reached gold schema)
+  Wrong tables:    1  (schema ok, missed a gold table)
+  Wrong logic:     0  (right tables, wrong query)
+
+============================================================
+Failed cases detail:
+============================================================
+
+[1/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers)
+  Seq:    submit
+  PROMPT:    Count the number of beers missing IBU data that should be flagged for data quality analysis.
+  GOLD:      SELECT COUNT(*) as missing_ibu_count FROM CraftBeer.beers b WHERE b.ibu IS NULL
+  SUBMITTED: SELECT COUNT(*) AS missing_ibu_count FROM public.beers WHERE ibu IS NULL;
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[2/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 8 pitchers by WHIP (Walks + Hits / Innings Pitched, lower is better) for seasons with a
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP 
+  SUBMITTED: SELECT m.nameFirst,
+       m.nameLast,
+       p.yearID AS year,
+       p.IPouts / 3.0 AS innings_pitched,
+       (p.BB +
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name pitching does not exist!
+Did you mean "la
+
+[3/128] evals_easy | MISMATCH | schema=world
+  Schema: ✓  explored=(none)
+  Tables: ~  missed=world.Country, world.CountryLanguage
+  Seq:    submit
+  PROMPT:    List countries by continent with their dominant languages where language percentage exceeds 90%, sho
+  GOLD:      SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.Coun
+  SUBMITTED: SELECT co.continent,
+       co.name AS country,
+       cl.language,
+       cl.isofficial AS is_official
+FROM world.count
+  ERROR:     Results do not match
+
+[4/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    submit
+  PROMPT:    Calculate the average transaction value excluding micro-transactions (under $5) and test transaction
+  GOLD:      SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND char
+  SUBMITTED: SELECT AVG(amount) AS average_transaction_value
+FROM public.transactions
+WHERE amount >= 5
+  AND amount <> 0.01
+  AND ch
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name transactions does not exist!
+Did you mean
+
+[5/128] evals_easy | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Calculate win rates for White players (with at least 5 games), excluding any games where the opening
+  GOLD:      SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FR
+  SUBMITTED: WITH filtered AS (
+  SELECT g.white_player_id AS player_id,
+         CASE WHEN g.result = '1-0' THEN 1 ELSE 0 END AS win
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[6/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers)
+  Seq:    submit
+  PROMPT:    For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate aver
+  GOLD:      SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style
+  SUBMITTED: SELECT style,
+       AVG(COALESCE(ibu, 20)) AS avg_ibu
+FROM public.beers
+GROUP BY style
+ORDER BY style;
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[7/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.loan)
+  Seq:    submit
+  PROMPT:    Calculate the loan portfolio size by status, classifying A as 'Performing', B as 'Watch List', and C
+  GOLD:      SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-
+  SUBMITTED: SELECT
+  CASE
+    WHEN loan_class = 'A' THEN 'Performing'
+    WHEN loan_class = 'B' THEN 'Watch List'
+    WHEN loan_clas
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[8/128] evals_easy | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.City, world.Country)
+  Seq:    submit
+  PROMPT:    List major cities along with their country information. Major cities are defined as those with popul
+  GOLD:      SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN wor
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[9/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 30 constructors with the highest number of races where at least two cars started. A car
+  GOLD:      SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN Erga
+  SUBMITTED: WITH qualifying_races AS (
+  SELECT raceId
+  FROM public.results
+  WHERE grid > 0
+  GROUP BY raceId
+  HAVING COUNT(*) >=
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[10/128] evals_easy | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district)
+  Seq:    submit
+  PROMPT:    Find district names (A2) with fewer than 50 accounts that should be aggregated as 'Other' for report
+  GOLD:      SELECT d.A2 as district_name, COUNT(a.account_id) as account_count FROM financial.district d LEFT JOIN financial.account
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 10
+  ERROR:     Results do not match
+
+[11/128] evals_easy | MISMATCH | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 30 F1 drivers (first name and last name) by race completion rate, where position NULL o
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 EL
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables LIMIT 100
+  ERROR:     Results do not match
+
+[12/128] evals_easy | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country)
+  Seq:    submit
+  PROMPT:    Find the top 50 countries by population density (population per square km), only for countries with 
+  GOLD:      SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population 
+  SUBMITTED: SELECT name AS country_name,
+       (population::numeric / area_km2) AS population_density
+FROM public.countries
+WHERE p
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name countries does not exist!
+Did you mean "M
+
+[13/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    submit
+  PROMPT:    Report Prague (district_id = 1) loan statistics separately from other districts as required. Show th
+  GOLD:      SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, S
+  SUBMITTED: SELECT CASE WHEN l.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END AS region,
+       COUNT(*) AS loan_count,
+  
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[14/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    List each constructor-season combination where the constructor scored more than 100 total points, fo
+  GOLD:      SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors 
+  SUBMITTED: SELECT c.name AS constructor_name,
+       r.year,
+       SUM(cr.points) AS total_points
+FROM f1.constructor_results cr
+J
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name constructor_results does not exist!
+Did y
+
+[15/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.trans)
+  Seq:    submit
+  PROMPT:    Calculate transaction statistics (total deposits, total deposit amount, and average deposit amount),
+  GOLD:      SELECT COUNT(*) as total_deposits, SUM(amount) as total_deposit_amount, AVG(amount) as avg_deposit_amount FROM financial
+  SUBMITTED: SELECT COUNT(*) AS total_deposits,
+       SUM(amount) AS total_deposit_amount,
+       AVG(amount) AS average_deposit_amo
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name transactions does not exist!
+Did you mean
+
+[16/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Identify the top 30 members (first, last) by cumulative lifetime charges, excluding refunds ('RF') a
+  GOLD:      SELECT m.firstname, m.lastname, SUM(c.charge_amt) as lifetime_charges FROM Credit.member m JOIN Credit.charge c ON m.mem
+  SUBMITTED: SELECT m.first_name,
+       m.last_name,
+       SUM(t.amount) AS total_charges
+FROM public.members AS m
+JOIN public.tran
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name members does not exist!
+Did you mean "Cre
+
+[17/128] evals_easy | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.City, world.Country)
+  Seq:    submit
+  PROMPT:    List the top 50 capital cities by population, along with their countries.
+  GOLD:      SELECT co.Name as country, ci.Name as capital_city, ci.Population FROM world.Country co JOIN world.City ci ON co.Capital
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100
+  ERROR:     Results do not match
+
+[18/128] evals_easy | SQL_ERROR | schema=Hockey
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Hockey.Master, Hockey.Scoring)
+  Seq:    submit
+  PROMPT:    Find the top 50 NHL players by average goals per season, excluding WHA statistics (lgID = 'WHA' is f
+  GOLD:      SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT 
+  SUBMITTED: SELECT s.playerID,
+       SUM(s.G) AS total_goals,
+       COUNT(DISTINCT s.yearID) AS seasons,
+       SUM(s.G)::float / 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name nhl_stats does not exist!
+Did you mean "S
+
+[19/128] evals_easy | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.departments, employee.dept_emp, employee.dept_manager)
+  Seq:    submit
+  PROMPT:    Calculate the current headcount by department based on their current department assignment (where to
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT de.emp_no) as headcount FROM employee.dept_emp de JOIN employee.departments d ON de.d
+  SUBMITTED: SELECT d.dept_name,
+       COUNT(*) AS headcount
+FROM (
+    SELECT de.emp_no,
+           de.dept_no
+    FROM public.dept
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name dept_emp does not exist!
+Did you mean "em
+
+[20/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.trans)
+  Seq:    submit
+  PROMPT:    Find the top 30 accounts by total absolute transaction volume, excluding transactions before 1995-01
+  GOLD:      SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id 
+  SUBMITTED: SELECT account_id,
+       SUM(ABS(amount)) AS total_abs_volume
+FROM public.transactions
+WHERE transaction_date >= DATE '
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name transactions does not exist!
+Did you mean
+
+[21/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    run_sql → submit
+  PROMPT:    Show carrier performance with counts of on-time (0-15 min), moderately delayed (15-180 min), and sev
+  GOLD:      SELECT UniqueCarrier, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time, SUM(CASE WHEN ArrDelayMinutes >
+  SUBMITTED: SELECT
+  Carrier,
+  SUM(CASE WHEN delay_minutes BETWEEN 0 AND 15 THEN 1 ELSE 0 END) AS on_time_count,
+  SUM(CASE WHEN de
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[22/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.drivers, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position compariso
+  GOLD:      SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_p
+  SUBMITTED: SELECT
+    r1.raceId,
+    ra.year,
+    c.name AS constructor_name,
+    d1.surname AS driver1_surname,
+    d2.surname AS 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[23/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Identify production breweries that should be analyzed separately. Breweries producing more than 20 d
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: SELECT b.brewery_id, b.name, COUNT(DISTINCT be.beer_id) AS distinct_beer_count
+FROM breweries b
+JOIN beers be ON be.brew
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name breweries does not exist!
+Did you mean "C
+
+[24/128] evals_easy | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    submit
+  PROMPT:    Find country names where the sum of language percentages exceeds 100% due to multilingualism.
+  GOLD:      SELECT co.Name FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode GROUP BY co.Name HAVING S
+  SUBMITTED: SELECT c.name AS country_name
+FROM public.country c
+JOIN public.country_language cl ON c.code = cl.country_code
+GROUP BY
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name country does not exist!
+Did you mean "Mon
+
+[25/128] evals_easy | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Compare average salaries by gender for current employees, but only show results if there are at leas
+  GOLD:      SELECT e.gender, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no W
+  SUBMITTED: WITH gender_stats AS (
+  SELECT gender,
+         COUNT(*) AS cnt,
+         AVG(salary) AS avg_salary
+  FROM public.emplo
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[26/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 starting pitchers by games started, with at least 50 innings pitched, showing their 
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2
+  SUBMITTED: SELECT p.first_name,
+       p.last_name,
+       s.year,
+       s.games_started,
+       s.innings_pitched,
+       s.earne
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name players does not exist!
+Did you mean "Bas
+
+[27/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Analyze completed (non-null dep/arr times) flights by day of week for January 2016, excluding cancel
+  GOLD:      SELECT DayOfWeek, COUNT(*) as total_flights, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time_flights, 
+  SUBMITTED: SELECT day_of_week,
+       COUNT(*) AS total_flights,
+       SUM(CASE WHEN arr_delay <= 15 THEN 1 ELSE 0 END) AS on_time
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[28/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 pitchers by ERA (Earned Run Average) for seasons with at least 50 innings pitched (1
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FR
+  SUBMITTED: SELECT m.nameFirst,
+       m.nameLast,
+       p.yearID AS year,
+       (p.IPOuts / 3.0) AS innings_pitched,
+       (p.ER
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name pitching does not exist!
+Did you mean "la
+
+[29/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    submit
+  PROMPT:    Aggregate loan statistics for districts 70-77 as a single 'Eastern Region' entity, showing total loa
+  GOLD:      SELECT 'Eastern Region' as region, COUNT(l.loan_id) as total_loans, AVG(l.amount) as avg_loan_amount FROM financial.dist
+  SUBMITTED: SELECT 'Eastern Region' AS region,
+       COUNT(*) AS total_loans,
+       AVG(loan_amount) AS avg_loan_amount
+FROM publi
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[30/128] evals_easy | MISMATCH | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees)
+  Seq:    submit
+  PROMPT:    How many employees are part of the 'legacy workforce' (hired before 1990-01-01)?
+  GOLD:      SELECT COUNT(*) as legacy_workforce_count FROM employee.employees WHERE hire_date < '1990-01-01'
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100
+  ERROR:     Results do not match
+
+[31/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Find the top 25 members (member_no, first name, last name, and net_charge_volume) by net charge volu
+  GOLD:      SELECT m.member_no, m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END
+  SUBMITTED: SELECT m.member_no,
+       m.first_name,
+       m.last_name,
+       nc.net_charge_volume
+FROM (
+    SELECT c.member_no,
+
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name charges does not exist!
+Did you mean "Cre
+
+[32/128] evals_easy | SQL_ERROR | schema=Hockey
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Hockey.Master, Hockey.Scoring)
+  Seq:    submit
+  PROMPT:    Find the top 50 NHL players by career points, excluding WHA statistics (WHA has lgID = 'WHA' and is 
+  GOLD:      SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.S
+  SUBMITTED: SELECT p.playerID,
+       p.nameFirst,
+       p.nameLast,
+       SUM(COALESCE(s.G, 0) + COALESCE(s.A, 0)) AS career_poin
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name player_stats does not exist!
+Did you mean
+
+[33/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    What is the on-time performance percentage for each unique airline carrier, considering only non-div
+  GOLD:      SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_p
+  SUBMITTED: SELECT carrier,
+       ROUND(100.0 * SUM(CASE WHEN arrival_delay <= 15 THEN 1 ELSE 0 END) / COUNT(*), 2) AS on_time_perc
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[34/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.halloffame, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 Hall of Fame voting results by BBWAA with at least 75% support, showing vote percent
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID, CAST(h.votes AS REAL) / h.ballots * 100 as vote_percentage FROM lahman_2014.ha
+  SUBMITTED: SELECT p.nameFirst AS first_name,
+       p.nameLast AS last_name,
+       h.yearid AS year,
+       (h.votes::float / h.ba
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name hall_of_fame does not exist!
+Did you mean
+
+[35/128] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 players by career batting average, only considering seasons where they had at least 
+  GOLD:      SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100
+  ERROR:     Results do not match
+
+[36/128] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    run → submit
+  PROMPT:    What is the total amount of performing loans (status 'A') by district name, excluding Prague (distri
+  GOLD:      SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d
+  SUBMITTED: SELECT d.district_name,
+       SUM(l.amount) AS total_amount
+FROM public.loans l
+JOIN public.districts d ON l.district_i
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[37/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.halloffame, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the names and years of the top 50 Hall of Fame players by career hits. Remember, we only care a
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN la
+  SUBMITTED: SELECT CONCAT(p.nameFirst, ' ', p.nameLast) AS name,
+       h.yearID AS induction_year,
+       b.total_hits
+FROM (
+    S
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name batting does not exist!
+Did you mean "lah
+
+[38/128] evals_easy | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Find the top three draw results in chess games, excluding games where the opening name contains 'Fre
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as draw_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT o.opening_id,
+       o.opening_name,
+       COUNT(*) AS draw_count
+FROM   public.games g
+JOIN   public.openings o
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[39/128] evals_easy | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in 
+  GOLD:      SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening 
+  SUBMITTED: SELECT g.game_id,
+       g.white_elo,
+       g.black_elo,
+       o.opening_name,
+       ABS(g.white_elo - g.black_elo) A
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[40/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Find the top 50 member-quarters by charge count, using statement_no for period assignment, not charg
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT m.first_name,
+       m.last_name,
+       c.statement_no,
+       COUNT(*) AS charge_count,
+       SUM(c.charge_amo
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name charges does not exist!
+Did you mean "Cre
+
+[41/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    submit
+  PROMPT:    Group charges by spending type: Essential (categories 1-10), Discretionary (categories 11-20), Other
+  GOLD:      SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionar
+  SUBMITTED: SELECT CASE WHEN category BETWEEN 1 AND 10 THEN 'Essential'
+            WHEN category BETWEEN 11 AND 20 THEN 'Discretion
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name charges does not exist!
+Did you mean "Cre
+
+[42/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Find the top 50 session beers (ABV < 5%) by ABV, which should be tracked separately from full-streng
+  GOLD:      SELECT b.name as beer_name, b.abv, b.style, br.name as brewery FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.b
+  SUBMITTED: SELECT b.name AS beer_name,
+       b.abv,
+       s.name AS style,
+       br.name AS brewery_name
+FROM public.beer b
+JOIN
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beer does not exist!
+Did you mean "CraftB
+
+[43/128] evals_easy | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    What are the top three openings by games played, excluding ALL games where the opening name contains
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT g.opening_id,
+       o.opening_name,
+       COUNT(*) AS games_played
+FROM public.games AS g
+JOIN public.openings 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[44/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 3 F1 rookie drivers ordered by their start count (highest first) then surname (descendi
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as career_starts FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = 
+  SUBMITTED: SELECT d.driver_id, d.forename, d.surname, COUNT(r.result_id) AS start_count
+FROM f1.drivers d
+JOIN f1.results r ON d.dr
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name drivers does not exist!
+Did you mean "Erg
+
+[45/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    submit
+  PROMPT:    Find the top 50 statements by net amount: sum of charges minus sum of refunds. Exclude test transact
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT t.statement_id,
+       SUM(CASE WHEN t.transaction_type = 'charge' THEN t.amount ELSE -t.amount END) AS net_amoun
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name transactions does not exist!
+Did you mean
+
+[46/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Calculate total points by constructor and year for each season from 2010 onwards (when points system
+  GOLD:      SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.construc
+  SUBMITTED: SELECT con.constructorId,
+       con.name,
+       r.year,
+       SUM(res.points) AS total_points
+FROM f1.results AS res
+
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[47/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Identify the top 30 microbreweries with the smallest beer catalogs. Breweries with fewer than 3 beer
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: SELECT b.id AS brewery_id,
+       b.name AS brewery_name,
+       COUNT(be.id) AS beer_count
+FROM public.breweries AS b
+L
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name breweries does not exist!
+Did you mean "C
+
+[48/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    List 'high-gravity' beers (ABV at or above 9.5%) along with their brewery information. Note: ABV is 
+  GOLD:      SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.bee
+  SUBMITTED: SELECT b.beer_name,
+       b.abv,
+       br.brewery_name,
+       br.city,
+       br.state
+FROM public.beers AS b
+JOIN pu
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[49/128] evals_easy | SQL_ERROR | schema=imdb_MovieLens
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(imdb_MovieLens.u2base)
+  Seq:    submit
+  PROMPT:    Identify 'super users' in the movie ratings data. Users who have rated more than 1000 movies are con
+  GOLD:      SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000
+  SUBMITTED: SELECT user_id
+FROM public.ratings
+GROUP BY user_id
+HAVING COUNT(*) > 1000;
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name ratings does not exist!
+Did you mean "tra
+
+[50/128] evals_easy | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 10 batters by batting average (H/AB) for seasons where they had at least 100 at-bats (t
+  GOLD:      SELECT p.nameFirst, p.nameLast, b.yearID, CAST(b.H AS REAL) / b.AB as batting_avg FROM lahman_2014.batting b JOIN lahman
+  SUBMITTED: SELECT p.playerID,
+       p.nameFirst,
+       p.nameLast,
+       b.yearID,
+       b.AB,
+       b.H,
+       CAST(b.H AS F
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name batting does not exist!
+Did you mean "lah
+
+[51/128] evals_easy | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Find beers with 'extreme' bitterness (IBU above 100), which should be segmented separately for custo
+  GOLD:      SELECT b.name as beer_name, b.ibu, b.style, br.name as brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br O
+  SUBMITTED: SELECT b.name AS beer_name,
+       b.ibu,
+       b.style,
+       br.name AS brewery_name
+FROM public.beers AS b
+JOIN pub
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[52/128] evals_easy | SQL_ERROR | schema=Accidents
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Accidents.nesreca)
+  Seq:    submit
+  PROMPT:    Count accidents by administrative unit, only for units with more than 100 accidents for statistical 
+  GOLD:      SELECT n.upravna_enota, COUNT(*) as accident_count FROM Accidents.nesreca n GROUP BY n.upravna_enota HAVING COUNT(*) > 1
+  SUBMITTED: SELECT au.name AS administrative_unit,
+       COUNT(*) AS accident_count
+FROM public.accidents a
+JOIN public.administrat
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name accidents does not exist!
+Did you mean "f
+
+[53/128] evals_easy | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    For each ECO code, show the game count, white wins, black wins, and draws, excluding games where the
+  GOLD:      SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHE
+  SUBMITTED: SELECT
+    eco,
+    COUNT(*) AS game_count,
+    SUM(CASE WHEN result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+    SUM(C
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[54/128] evals_easy | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.departments, employee.dept_emp, employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Find salary statistics for departments where salary statistics can be reported (at least 5 employees
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JO
+  SUBMITTED: SELECT d.dept_name,
+       COUNT(DISTINCT de.emp_no) AS employee_count,
+       AVG(s.salary) AS average_salary
+FROM   de
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name dept_emp does not exist!
+Did you mean "em
+
+[55/128] evals_easy | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.provider)
+  Seq:    submit
+  PROMPT:    Find providers with fewer than 100 total charges that should be aggregated as 'Long tail providers'.
+  GOLD:      SELECT p.provider_no, COUNT(*) as charge_count FROM Credit.charge c JOIN Credit.provider p ON c.provider_no = p.provider
+  SUBMITTED: SELECT provider_number,
+       COUNT(*) AS charge_count
+FROM public.charges
+WHERE amount <> 0.01
+  AND charge_code <> 'R
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name charges does not exist!
+Did you mean "Cre
+
+[56/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Find all origin/destination airport pairs with fewer than 50 completed flights (these are 'thin rout
+  GOLD:      SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepT
+  SUBMITTED: SELECT COUNT(*) AS thin_route_pair_count
+FROM (
+    SELECT origin_airport_id, dest_airport_id
+    FROM public.flights
+  
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[57/128] evals_easy | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    submit
+  PROMPT:    Find countries (names and codes) with multiple official languages (more than one language entry). Sh
+  GOLD:      SELECT co.Code, co.Name, COUNT(cl.Language) as language_count FROM world.Country co JOIN world.CountryLanguage cl ON co.
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' ORDER BY table_schema, tabl
+  ERROR:     Results do not match
+
+[58/128] evals_easy | MISMATCH | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 30 F1 drivers by podium finishes (position 1, 2, or 3). Position values of 0 or NULL in
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as podium_finishes FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100;
+  ERROR:     Results do not match
+
+[59/128] evals_easy | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Compare current average salaries between 'Legacy' workforce (hired before 1990) and 'Recent' hires. 
+  GOLD:      SELECT CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END as cohort, AVG(s.salary) as avg_salary FROM 
+  SUBMITTED: SELECT CASE WHEN e.hire_date < DATE '1990-01-01' THEN 'Legacy' ELSE 'Recent' END AS workforce_group,
+       COUNT(*) AS 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[60/128] evals_easy | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.lapTimes)
+  Seq:    submit
+  PROMPT:    Find the top 30 drivers by fastest lap time. Any lap time under 60 seconds is a data error and must 
+  GOLD:      SELECT d.forename, d.surname, MIN(lt.milliseconds) as fastest_lap_ms FROM ErgastF1.lapTimes lt JOIN ErgastF1.drivers d O
+  SUBMITTED: SELECT d.driver_id,
+       d.driver_name,
+       MIN(lt.lap_time) AS fastest_lap_time_ms
+FROM   lap_times lt
+JOIN   driv
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name lap_times does not exist!
+Did you mean "p
+
+[61/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Find the top route with the most severe delays (more than 3 hours), excluding weather-related delays
+  GOLD:      SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinute
+  SUBMITTED: SELECT origin_airport AS origin,
+       dest_airport AS destination,
+       COUNT(*) AS severe_delays
+FROM public.flight
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[62/128] evals_easy | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    What is the count of diverted flights by route (origin-destination pair), including only routes with
+  GOLD:      SELECT Origin, Dest, COUNT(*) as diverted_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE Diverted = 1 GROUP
+  SUBMITTED: SELECT origin, dest, COUNT(*) AS diversion_count
+FROM public.flights
+WHERE diverted = TRUE
+GROUP BY origin, dest
+HAVING 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[63/128] evals_easy | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.loan)
+  Seq:    submit
+  PROMPT:    Find the default rate for loans, excluding 'watch list' (status B) loans from the calculation as per
+  GOLD:      SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[64/128] evals_easy | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country)
+  Seq:    submit
+  PROMPT:    Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclu
+  GOLD:      SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0
+  SUBMITTED: SELECT Name, Population, GNP
+FROM public.country
+WHERE Population > 0 AND Population < 100000;
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name country does not exist!
+Did you mean "Mon
+
+[65/128] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.halloffame, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the names and years of the top 50 Hall of Fame players by career hits.
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN la
+  SUBMITTED: SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_name ILIKE '%hall%' OR table_na
+  ERROR:     Results do not match
+
+[66/128] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Find the top three draw results in chess games, grouped by opening id and name.
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as draw_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT o.opening_id,
+       o.opening_name,
+       COUNT(*) AS draw_count
+FROM chess.games g
+JOIN chess.openings o ON g.
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "game"
+
+[67/128] evals_hard | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 30 F1 drivers (first name and last name) by race completion rate, only including driver
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 EL
+  SUBMITTED: SELECT d.forename AS first_name,
+       d.surname AS last_name,
+       COUNT(r.resultId) AS total_races,
+       SUM(CASE
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name drivers does not exist!
+Did you mean "Erg
+
+[68/128] evals_hard | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.provider)
+  Seq:    submit
+  PROMPT:    Find providers with fewer than 100 total charges that should be aggregated as 'Long tail providers'.
+  GOLD:      SELECT p.provider_no, COUNT(*) as charge_count FROM Credit.charge c JOIN Credit.provider p ON c.provider_no = p.provider
+  SUBMITTED: SELECT provider_number, COUNT(*) AS charge_count
+FROM public.charges
+GROUP BY provider_number
+HAVING COUNT(*) < 100
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name charges does not exist!
+Did you mean "Cre
+
+[69/128] evals_hard | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.City, world.Country)
+  Seq:    submit
+  PROMPT:    List the top 50 capital cities by population, along with their countries.
+  GOLD:      SELECT co.Name as country, ci.Name as capital_city, ci.Population FROM world.Country co JOIN world.City ci ON co.Capital
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100;
+  ERROR:     Results do not match
+
+[70/128] evals_hard | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    submit
+  PROMPT:    List countries by continent with their dominant languages where language percentage exceeds 90%, sho
+  GOLD:      SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.Coun
+  SUBMITTED: SELECT c.Continent AS continent,
+       c.Name AS country,
+       cl.Language AS language,
+       cl.Percentage AS perce
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name country does not exist!
+Did you mean "Mon
+
+[71/128] evals_hard | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 30 F1 drivers by podium finishes.
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as podium_finishes FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId 
+  SUBMITTED: SELECT CONCAT(d.forename, ' ', d.surname) AS driver_name,
+       COUNT(*) AS podiums
+FROM public.results r
+JOIN public.d
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[72/128] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.results)
+  Seq:    run_sql → submit
+  PROMPT:    Find the top 30 constructors with the highest number of races where at least two cars started.
+  GOLD:      SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN Erga
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[73/128] evals_hard | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.drivers, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position compariso
+  GOLD:      SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_p
+  SUBMITTED: SELECT r.raceId,
+       r.year,
+       c1.name AS constructor_name,
+       d1.surname AS driver1_surname,
+       d2.surn
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name races does not exist!
+Did you mean "Ergas
+
+[74/128] evals_hard | MISMATCH | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.departments, employee.dept_emp, employee.dept_manager)
+  Seq:    submit
+  PROMPT:    Calculate the current headcount by department based on their current department assignment, counting
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT de.emp_no) as headcount FROM employee.dept_emp de JOIN employee.departments d ON de.d
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[75/128] evals_hard | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Find the top 25 members (member_no, first name, last name, and net_charge_volume) by net charge volu
+  GOLD:      SELECT m.member_no, m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END
+  SUBMITTED: SELECT m.member_no, m.first_name, m.last_name,
+       SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_volume ELSE c.ch
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name members does not exist!
+Did you mean "Cre
+
+[76/128] evals_hard | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Show carrier performance with counts of on-time, moderately delayed, and severely delayed flights.
+  GOLD:      SELECT UniqueCarrier, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time, SUM(CASE WHEN ArrDelayMinutes >
+  SUBMITTED: SELECT carrier,
+       SUM(CASE WHEN arr_delay IS NULL THEN 0
+                WHEN arr_delay <= 0 THEN 1 ELSE 0 END) AS 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[77/128] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in 
+  GOLD:      SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening 
+  SUBMITTED: SELECT game_id, white_elo, black_elo, opening_id, analysis_weight
+FROM public.games
+WHERE ABS(white_elo - black_elo) > 4
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[78/128] evals_hard | MISMATCH | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    run_sql → submit
+  PROMPT:    Find the top route with the most severe delays. Only count completed flights. Show the origin, desti
+  GOLD:      SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinute
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[79/128] evals_hard | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    What is the on-time performance percentage for each unique airline carrier? Round the percentage to 
+  GOLD:      SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_p
+  SUBMITTED: SELECT carrier,
+       ROUND(100.0 * SUM(CASE WHEN arr_delay <= 0 THEN 1 ELSE 0 END) / COUNT(*), 2) AS on_time_performan
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[80/128] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    submit
+  PROMPT:    Group charges by spending type. Show the spending_type, charge_count, and total_amount.
+  GOLD:      SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionar
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[81/128] evals_hard | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country)
+  Seq:    submit
+  PROMPT:    Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclu
+  GOLD:      SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0
+  SUBMITTED: SELECT * FROM information_schema.tables LIMIT 10
+  ERROR:     Results do not match
+
+[82/128] evals_hard | MISMATCH | schema=Hockey
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Hockey.Master, Hockey.Scoring)
+  Seq:    submit
+  PROMPT:    Find the top 50 NHL players by career points, only including players with at least 5 seasons.
+  GOLD:      SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.S
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[83/128] evals_hard | SQL_ERROR | schema=Hockey
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Hockey.Master, Hockey.Scoring)
+  Seq:    submit
+  PROMPT:    Find the top 50 NHL players by average goals per season, only including players with at least 5 seas
+  GOLD:      SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT 
+  SUBMITTED: SELECT p.player_name,
+       AVG(ps.goals) AS avg_goals_per_season,
+       COUNT(DISTINCT ps.season) AS seasons_played
+F
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name player_stats does not exist!
+Did you mean
+
+[84/128] evals_hard | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Analyze completed flights by day of week for January 2016. Give total flights, on-time flights, and 
+  GOLD:      SELECT DayOfWeek, COUNT(*) as total_flights, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time_flights, 
+  SUBMITTED: SELECT 
+  TO_CHAR(flight_date, 'Day') AS day_of_week,
+  COUNT(*) AS total_flights,
+  SUM(CASE WHEN departure_delay <= 0 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name flights does not exist!
+Did you mean "Mon
+
+[85/128] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    submit
+  PROMPT:    Calculate the average transaction value.
+  GOLD:      SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND char
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 10
+  ERROR:     Results do not match
+
+[86/128] evals_hard | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 10 batters (name, year) by batting average (H/AB).
+  GOLD:      SELECT p.nameFirst, p.nameLast, b.yearID, CAST(b.H AS REAL) / b.AB as batting_avg FROM lahman_2014.batting b JOIN lahman
+  SUBMITTED: SELECT CONCAT(p.nameFirst, ' ', p.nameLast) AS name,
+       b.yearID AS year,
+       CAST(b.H AS FLOAT) / NULLIF(b.AB, 0
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name players does not exist!
+Did you mean "Bas
+
+[87/128] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Identify production breweries that should be analyzed separately.
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: SELECT brewery_id, name, annual_production
+FROM (
+  SELECT brewery_id, name, annual_production,
+         ROW_NUMBER() OV
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name breweries does not exist!
+Did you mean "C
+
+[88/128] evals_hard | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Compare current average salaries between 'Legacy' and 'Recent' workforce.
+  GOLD:      SELECT CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END as cohort, AVG(s.salary) as avg_salary FROM 
+  SUBMITTED: SELECT CASE WHEN e.hire_date < DATE '2015-01-01' THEN 'Legacy' ELSE 'Recent' END AS workforce_type,
+       AVG(s.salary)
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[89/128] evals_hard | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees)
+  Seq:    submit
+  PROMPT:    How many employees are part of the 'legacy workforce'?
+  GOLD:      SELECT COUNT(*) as legacy_workforce_count FROM employee.employees WHERE hire_date < '1990-01-01'
+  SUBMITTED: SELECT COUNT(*) AS legacy_employee_count
+FROM public.employees
+WHERE LOWER(workforce_category) = 'legacy workforce';
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[90/128] evals_hard | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 non-reliever pitchers by ERA (Earned Run Average). Show the player's first and last 
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FR
+  SUBMITTED: SELECT p.nameFirst AS first_name,
+       p.nameLast AS last_name,
+       pt.yearID AS year,
+       pt.IPouts/3.0 AS inni
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name people does not exist!
+Did you mean "lega
+
+[91/128] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    What are the top three openings by games played? Count games separately for each opening_id (do not 
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT opening_id,
+       COUNT(*) AS games_played
+FROM public.games
+GROUP BY opening_id
+ORDER BY games_played DESC
+LIMI
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[92/128] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Identify the top 30 members (first, last) by cumulative lifetime charges.
+  GOLD:      SELECT m.firstname, m.lastname, SUM(c.charge_amt) as lifetime_charges FROM Credit.member m JOIN Credit.charge c ON m.mem
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema','pg_catal
+  ERROR:     Results do not match
+
+[93/128] evals_hard | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.loan)
+  Seq:    submit
+  PROMPT:    Calculate the loan portfolio size by status for each loan classification. Show the loan classificati
+  GOLD:      SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-
+  SUBMITTED: SELECT
+    classification AS loan_classification,
+    status,
+    COUNT(*) AS loan_count,
+    SUM(amount) AS total_amoun
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[94/128] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge, Credit.member)
+  Seq:    submit
+  PROMPT:    Find the top 50 member-quarters by charge count. I want to see the member's first and last name, the
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[95/128] evals_hard | MISMATCH | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers)
+  Seq:    submit
+  PROMPT:    Count the number of beers missing IBU data that should be flagged for data quality analysis.
+  GOLD:      SELECT COUNT(*) as missing_ibu_count FROM CraftBeer.beers b WHERE b.ibu IS NULL
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_name ILIKE '%beer%' OR table_name ILIKE '%bre
+  ERROR:     Results do not match
+
+[96/128] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Find the top 3 F1 rookie drivers ordered by their start count (highest first) then surname (descendi
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as career_starts FROM ErgastF1.results r JOIN ErgastF1.drivers d ON r.driverId = 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[97/128] evals_hard | MISMATCH | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Find beers with 'extreme' bitterness. Return the beer name, IBU, style, and brewery name.
+  GOLD:      SELECT b.name as beer_name, b.ibu, b.style, br.name as brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br O
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[98/128] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    List 'high-gravity' beers along with their brewery information and abv. Note: ABV is stored as a dec
+  GOLD:      SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.bee
+  SUBMITTED: SELECT b.name AS beer_name,
+       br.name AS brewery_name,
+       b.abv
+FROM public.beers AS b
+JOIN public.breweries AS
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[99/128] evals_hard | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.departments, employee.dept_emp, employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Find salary statistics for departments where salary statistics can be reported. Show me employee cou
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JO
+  SUBMITTED: SELECT d.department_name,
+       COUNT(e.employee_id) AS employee_count,
+       AVG(e.salary) AS average_salary
+FROM pub
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[100/128] evals_hard | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    submit
+  PROMPT:    Aggregate loan statistics for districts 70-77 as a single 'Eastern Region' entity, showing total loa
+  GOLD:      SELECT 'Eastern Region' as region, COUNT(l.loan_id) as total_loans, AVG(l.amount) as avg_loan_amount FROM financial.dist
+  SUBMITTED: SELECT 'Eastern Region' AS region,
+       COUNT(*) AS total_loans,
+       AVG(loan_amount) AS avg_loan_amount
+FROM publi
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name loans does not exist!
+Did you mean "finan
+
+[101/128] evals_hard | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    submit
+  PROMPT:    Find countries (names and codes) with multiple official languages. Show the language count.
+  GOLD:      SELECT co.Code, co.Name, COUNT(cl.Language) as language_count FROM world.Country co JOIN world.CountryLanguage cl ON co.
+  SUBMITTED: SELECT c.Name AS country_name,
+       c.Code AS country_code,
+       COUNT(cl.Language) AS official_language_count
+FROM 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name country does not exist!
+Did you mean "Mon
+
+[102/128] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Identify the top 30 microbreweries with the smallest beer catalogs.
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: SELECT b.brewery_id,
+       b.name AS brewery_name,
+       COUNT(be.beer_id) AS beer_count
+FROM   public.breweries AS b
+
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name breweries does not exist!
+Did you mean "C
+
+[103/128] evals_hard | SQL_ERROR | schema=imdb_MovieLens
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(imdb_MovieLens.u2base)
+  Seq:    submit
+  PROMPT:    Identify 'super users' by id in the movie ratings data, showing the number of ratings they've given.
+  GOLD:      SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000
+  SUBMITTED: SELECT userId, COUNT(*) AS rating_count
+FROM public.ratings
+GROUP BY userId
+HAVING COUNT(*) > 1000
+ORDER BY rating_count
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name ratings does not exist!
+Did you mean "tra
+
+[104/128] evals_hard | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    submit
+  PROMPT:    What is the total amount of performing loans by district name?
+  GOLD:      SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[105/128] evals_hard | SQL_ERROR | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    Find all origin/destination airport pairs that are thin routes. How many such pairs are there?
+  GOLD:      SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepT
+  SUBMITTED: SELECT origin_airport_id AS origin,
+       destination_airport_id AS destination,
+       COUNT(*) OVER() AS total_pairs
+
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name routes does not exist!
+Did you mean "imdb
+
+[106/128] evals_hard | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.loan)
+  Seq:    submit
+  PROMPT:    Find the default rate for loans.
+  GOLD:      SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' ORDER BY table_schema, tabl
+  ERROR:     Results do not match
+
+[107/128] evals_hard | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 players by career batting average, only including players with at least 500 career a
+  GOLD:      SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2
+  SUBMITTED: SELECT p.playerID,
+       p.nameFirst,
+       p.nameLast,
+       SUM(b.H) AS total_hits,
+       SUM(b.AB) AS total_at_ba
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name batting does not exist!
+Did you mean "lah
+
+[108/128] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.drivers, ErgastF1.lapTimes)
+  Seq:    submit
+  PROMPT:    Find the top 30 driver names by fastest lap time.
+  GOLD:      SELECT d.forename, d.surname, MIN(lt.milliseconds) as fastest_lap_ms FROM ErgastF1.lapTimes lt JOIN ErgastF1.drivers d O
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' LIMIT 100
+  ERROR:     Results do not match
+
+[109/128] evals_hard | SQL_ERROR | schema=Accidents
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Accidents.nesreca)
+  Seq:    submit
+  PROMPT:    Count accidents by administrative unit, only for units with more than 100 accidents for statistical 
+  GOLD:      SELECT n.upravna_enota, COUNT(*) as accident_count FROM Accidents.nesreca n GROUP BY n.upravna_enota HAVING COUNT(*) > 1
+  SUBMITTED: SELECT administrative_unit, COUNT(*) AS accident_count
+FROM public.accidents
+GROUP BY administrative_unit
+HAVING COUNT(*
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name accidents does not exist!
+Did you mean "f
+
+[110/128] evals_hard | SQL_ERROR | schema=Credit
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    run_sql → submit
+  PROMPT:    Find the top 50 statements by net amount.
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT * FROM public.statements ORDER BY net_amount DESC LIMIT 50
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name statements does not exist!
+Did you mean "
+
+[111/128] evals_hard | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    Calculate total points by constructor and year for each season from when points systems became compa
+  GOLD:      SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.construc
+  SUBMITTED: SELECT con.constructor_name AS constructor,
+       r.season_year,
+       SUM(res.points) AS total_points
+FROM public.res
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[112/128] evals_hard | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.trans)
+  Seq:    submit
+  PROMPT:    Find the top 30 accounts by total absolute transaction volume, excluding legacy transactions?
+  GOLD:      SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' ORDER BY table_schema, tabl
+  ERROR:     Results do not match
+
+[113/128] evals_hard | SQL_ERROR | schema=employee
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(employee.employees, employee.salaries)
+  Seq:    submit
+  PROMPT:    Compare average salaries by gender for current employees.
+  GOLD:      SELECT e.gender, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no W
+  SUBMITTED: SELECT gender,
+       AVG(salary) AS average_salary
+FROM public.employees
+WHERE termination_date IS NULL
+GROUP BY gender
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name employees does not exist!
+Did you mean "c
+
+[114/128] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.halloffame, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 Hall of Fame voting results by BBWAA with at least 75% support, showing vote percent
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID, CAST(h.votes AS REAL) / h.ballots * 100 as vote_percentage FROM lahman_2014.ha
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[115/128] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    submit
+  PROMPT:    Find the top 50 session beers by ABV. Note: ABV is stored as a decimal (e.g., 0.05 for 5%). I'd like
+  GOLD:      SELECT b.name as beer_name, b.abv, b.style, br.name as brewery FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.b
+  SUBMITTED: SELECT 
+  b.name AS beer_name,
+  b.abv,
+  s.name AS style_name,
+  br.name AS brewery_name
+FROM public.beer b
+JOIN public
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beer does not exist!
+Did you mean "CraftB
+
+[116/128] evals_hard | MISMATCH | schema=Airline
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    submit
+  PROMPT:    What is the count of diverted flights by route (origin-destination pair), including only routes with
+  GOLD:      SELECT Origin, Dest, COUNT(*) as diverted_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE Diverted = 1 GROUP
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[117/128] evals_hard | SQL_ERROR | schema=ErgastF1
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    submit
+  PROMPT:    List each constructor-season combination where the constructor scored more than 100 total points, fo
+  GOLD:      SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors 
+  SUBMITTED: SELECT c.name AS constructor, r.year, SUM(res.points) AS total_points
+FROM public.results res
+JOIN public.races r ON res
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name results does not exist!
+Did you mean "Erg
+
+[118/128] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    run_sql → submit →  → submit
+  PROMPT:    Find the top 8 pitchers by WHIP. Show the player's first and last name, the year, the innings pitche
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[119/128] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    Calculate win rates for White players (with at least 5 games). Return the 30 players with the highes
+  GOLD:      SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FR
+  SUBMITTED: SELECT p.player_name AS white_player,
+       COUNT(*) AS games_played,
+       SUM(CASE WHEN g.result = 'white' THEN 1 EL
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+
+[120/128] evals_hard | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    submit
+  PROMPT:    Find country names where the sum of language percentages exceeds 100% due to multilingualism.
+  GOLD:      SELECT co.Name FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode GROUP BY co.Name HAVING S
+  SUBMITTED: SELECT c.country_name
+FROM public.countries c
+JOIN public.country_languages cl ON cl.country_id = c.country_id
+GROUP BY 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name countries does not exist!
+Did you mean "M
+
+[121/128] evals_hard | SQL_ERROR | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.City, world.Country)
+  Seq:    submit
+  PROMPT:    List major cities along with their country information.
+  GOLD:      SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN wor
+  SUBMITTED: SELECT c.name AS city_name,
+       c.population AS city_population,
+       co.name AS country_name,
+       co.region AS 
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name city does not exist!
+Did you mean "Mondia
+
+[122/128] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers)
+  Seq:    submit
+  PROMPT:    For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate aver
+  GOLD:      SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style
+  SUBMITTED: SELECT style,
+       AVG(COALESCE(ibu, 20)) AS average_ibu
+FROM   beers
+GROUP BY style
+ORDER BY style;
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beers does not exist!
+Did you mean "Craft
+
+[123/128] evals_hard | SQL_ERROR | schema=lahman_2014
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    submit
+  PROMPT:    Find the top 50 starting pitchers by games started, showing their season statistics. I want to see t
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2
+  SUBMITTED: SELECT p.first_name,
+       p.last_name,
+       s.year,
+       s.games_started,
+       s.innings_pitched,
+       s.earne
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name players does not exist!
+Did you mean "Bas
+
+[124/128] evals_hard | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district)
+  Seq:    submit
+  PROMPT:    Find district names (A2) with fewer than 50 accounts that should be aggregated as 'Other' for report
+  GOLD:      SELECT d.A2 as district_name, COUNT(a.account_id) as account_count FROM financial.district d LEFT JOIN financial.account
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' ORDER BY table_schema, tabl
+  ERROR:     Results do not match
+
+[125/128] evals_hard | SQL_ERROR | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.trans)
+  Seq:    submit
+  PROMPT:    Calculate transaction statistics (total deposits, total deposit amount, and average deposit amount).
+  GOLD:      SELECT COUNT(*) as total_deposits, SUM(amount) as total_deposit_amount, AVG(amount) as avg_deposit_amount FROM financial
+  SUBMITTED: SELECT COUNT(*) AS total_deposits,
+       SUM(amount) AS total_deposit_amount,
+       AVG(amount) AS average_deposit_amo
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name transactions does not exist!
+Did you mean
+
+[126/128] evals_hard | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country)
+  Seq:    submit
+  PROMPT:    Find the top 50 countries by population density. Show names and densities.
+  GOLD:      SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population 
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[127/128] evals_hard | MISMATCH | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    submit
+  PROMPT:    Show the region, loan count, total loan amount, and average loan amount for each loan classification
+  GOLD:      SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, S
+  SUBMITTED: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_cata
+  ERROR:     Results do not match
+
+[128/128] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(Chess.game, Chess.opening)
+  Seq:    submit
+  PROMPT:    For each ECO code, show the game count, white wins, black wins, and draws. Only include ECO codes wi
+  GOLD:      SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHE
+  SUBMITTED: SELECT eco,
+       COUNT(*) AS game_count,
+       SUM(CASE WHEN result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+       
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name games does not exist!
+Did you mean "Chess
+

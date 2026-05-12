@@ -1,0 +1,191 @@
+
+============================================================
+Run analysis: 64 cases, 51 passed, 13 failed
+============================================================
+
+Failures by type:
+  MISMATCH              12
+  SQL_ERROR              1
+
+Navigation funnel (all cases):
+  Right schema:   63/64  (98%)
+  Right tables:   61/64  (95%)  [of schema-correct: 61/63]
+  Right logic:    51/64  (80%)  [of table-correct: 51/61]
+
+Failures by schema (gold query):
+  ErgastF1                              3 failures  [MISMATCH×3]
+  Credit                                3 failures  [MISMATCH×3]
+  world                                 2 failures  [MISMATCH×1, SQL_ERROR×1]
+  Chess                                 2 failures  [MISMATCH×2]
+  CraftBeer                             1 failures  [MISMATCH×1]
+  Airline                               1 failures  [MISMATCH×1]
+  lahman_2014                           1 failures  [MISMATCH×1]
+
+Failures by navigation stage:
+  Wrong schema:    1  (never reached gold schema)
+  Wrong tables:    0  (schema ok, missed a gold table)
+  Wrong logic:    12  (right tables, wrong query)
+
+============================================================
+Failed cases detail:
+============================================================
+
+[1/13] evals_easy | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.results)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 30 constructors with the highest number of races where at least two cars started. A car
+  GOLD:      SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN Erga
+  SUBMITTED: WITH race_counts AS (
+  SELECT raceId, constructorId
+  FROM ErgastF1.results
+  WHERE grid > 0
+  GROUP BY raceId, constru
+  ERROR:     Results do not match
+
+[2/13] evals_easy | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Seq:    find_schema → describe(Credit.member) → run_sql → run_sql → submit
+  PROMPT:    Find the top 50 member-quarters by charge count, using statement_no for period assignment, not charg
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT m.firstname, m.lastname, s.statement_no,
+       EXTRACT(YEAR FROM s.statement_dt) AS year,
+       EXTRACT(QUARTER
+  ERROR:     Results do not match
+
+[3/13] evals_easy | MISMATCH | schema=Credit
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Credit.charge)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find the top 50 statements by net amount: sum of charges minus sum of refunds. Exclude test transact
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT s.statement_no,
+       s.member_no,
+       s.statement_dt,
+       s.statement_amt,
+       SUM(CASE WHEN c.charge_
+  ERROR:     Results do not match
+
+[4/13] evals_easy | MISMATCH | schema=world
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(world.Country)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclu
+  GOLD:      SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0
+  SUBMITTED: SELECT c.country AS name, s.popabs AS population, s.GNP AS gross_national_product FROM nations.country c JOIN nations.st
+  ERROR:     Results do not match
+
+[5/13] evals_easy | MISMATCH | schema=CraftBeer
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(CraftBeer.beers)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate aver
+  GOLD:      SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style
+  SUBMITTED: SELECT 
+  CASE
+    WHEN style LIKE '%IPA%' OR style LIKE '%India Pale Ale%' THEN 'IPA'
+    WHEN style LIKE '%Stout%' OR 
+  ERROR:     Results do not match
+
+[6/13] evals_easy | SQL_ERROR | schema=world
+  Schema: ✓  explored=world
+  Tables: ✓  gold=(world.City, world.Country)
+  Seq:    find_schema → describe(world.City) → describe(world.Country) → run_sql → submit
+  PROMPT:    List major cities along with their country information. Major cities are defined as those with popul
+  GOLD:      SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN wor
+  SUBMITTED: SELECT 
+  cy.ID,
+  cy.Name AS CityName,
+  cy.District,
+  cy.Population AS CityPopulation,
+  cy.CountryCode,
+  c.Code AS 
+  ERROR:     Submitted query execution failed: column appears more than once; names must be unique: ["CountryCode"]
+
+[7/13] evals_easy | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.drivers, ErgastF1.races, ErgastF1.results)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position compariso
+  GOLD:      SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_p
+  SUBMITTED: SELECT r1.raceId,
+       ra.year,
+       c.constructorRef AS constructor_name,
+       d1.surname AS driver1_surname,
+   
+  ERROR:     Results do not match
+
+[8/13] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Calculate win rates for White players (with at least 5 games), excluding any games where the opening
+  GOLD:      SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FR
+  SUBMITTED: SELECT g.white AS player,
+  COUNT(*) AS games_played,
+  SUM(CASE WHEN g.game_result = '1-0' THEN 1
+           WHEN g.gam
+  ERROR:     Results do not match
+
+[9/13] evals_easy | MISMATCH | schema=Airline
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top route with the most severe delays (more than 3 hours), excluding weather-related delays
+  GOLD:      SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinute
+  SUBMITTED: SELECT f.Origin, f.Dest, COUNT(*) AS severe_delay_count
+FROM Airline.On_Time_On_Time_Performance_2016_1 f
+WHERE f.DepTim
+  ERROR:     Results do not match
+
+[10/13] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 8 pitchers by WHIP (Walks + Hits / Innings Pitched, lower is better) for seasons with a
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP 
+  SUBMITTED: SELECT p.nameFirst, p.nameLast, pi.yearID,
+       SUM(pi.IPouts)/3.0 AS innings_pitched,
+       (SUM(pi.BB) + SUM(pi.H))
+  ERROR:     Results do not match
+
+[11/13] evals_easy | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    find_schema → describe(ErgastF1.results) → run_sql → submit
+  PROMPT:    Calculate total points by constructor and year for each season from 2010 onwards (when points system
+  GOLD:      SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.construc
+  SUBMITTED: SELECT c.constructorId,
+       c.constructorRef,
+       r.year,
+       SUM(res.points) AS total_points
+FROM ErgastF1.res
+  ERROR:     Results do not match
+
+[12/13] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in 
+  GOLD:      SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening 
+  SUBMITTED: SELECT g.game_id,
+       o.name AS opening_name,
+       g.whiteElo,
+       g.BlackElo,
+       0.5 AS weight
+FROM Chess.g
+  ERROR:     Results do not match
+
+[13/13] evals_easy | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge)
+  Seq:    find_schema → run_sql → run_sql → run_sql → run_sql → describe(Credit.charge) → submit
+  PROMPT:    Group charges by spending type: Essential (categories 1-10), Discretionary (categories 11-20), Other
+  GOLD:      SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionar
+  SUBMITTED: WITH agg AS (
+    SELECT CASE
+        WHEN category_no BETWEEN 1 AND 10 THEN 'Essential'
+        WHEN category_no BETWEE
+  ERROR:     Results do not match
+

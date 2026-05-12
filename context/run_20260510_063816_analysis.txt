@@ -1,0 +1,822 @@
+
+============================================================
+Run analysis: 128 cases, 59 passed, 69 failed
+============================================================
+
+Failures by type:
+  MISMATCH              39
+  NO_SUBMISSION         12
+  AGENT_ERROR           10
+  SQL_ERROR              8
+
+Navigation funnel (all cases):
+  Right schema:  116/128  (91%)
+  Right tables:  105/128  (82%)  [of schema-correct: 105/116]
+  Right logic:    59/128  (46%)  [of table-correct: 59/105]
+
+Failures by schema (gold query):
+  world                                 9 failures  [AGENT_ERROR×5, NO_SUBMISSION×2, SQL_ERROR×1, MISMATCH×1]
+  Chess                                 9 failures  [MISMATCH×5, NO_SUBMISSION×2, AGENT_ERROR×1, SQL_ERROR×1]
+  lahman_2014                           8 failures  [MISMATCH×7, NO_SUBMISSION×1]
+  Credit                                8 failures  [MISMATCH×6, AGENT_ERROR×1, NO_SUBMISSION×1]
+  financial                             8 failures  [MISMATCH×4, NO_SUBMISSION×2, SQL_ERROR×1, AGENT_ERROR×1]
+  CraftBeer                             6 failures  [SQL_ERROR×3, MISMATCH×1, AGENT_ERROR×1, NO_SUBMISSION×1]
+  ErgastF1                              6 failures  [MISMATCH×5, NO_SUBMISSION×1]
+  employee                              5 failures  [MISMATCH×3, NO_SUBMISSION×1, SQL_ERROR×1]
+  Hockey                                4 failures  [MISMATCH×3, AGENT_ERROR×1]
+  Airline                               4 failures  [MISMATCH×3, NO_SUBMISSION×1]
+  imdb_MovieLens                        2 failures  [MISMATCH×1, SQL_ERROR×1]
+
+Failures by navigation stage:
+  Wrong schema:   12  (never reached gold schema)
+  Wrong tables:   10  (schema ok, missed a gold table)
+  Wrong logic:    47  (right tables, wrong query)
+
+============================================================
+Failed cases detail:
+============================================================
+
+[1/69] evals_easy | AGENT_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → list_tables(Countries) → list_tables(Countries) → list_tables(Countries) → de
+  PROMPT:    Find countries (names and codes) with multiple official languages (more than one language entry). Sh
+  GOLD:      SELECT co.Code, co.Name, COUNT(cl.Language) as language_count FROM world.Country co JOIN world.CountryLanguage cl ON co.
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[2/69] evals_easy | MISMATCH | schema=Hockey
+  Schema: ✓  explored=Hockey
+  Tables: ✓  gold=(Hockey.Master, Hockey.Scoring)
+  Guides: hockey_analytics
+  Seq:    search_guides → read_guide(hockey_analytics) → list_schemas → list_tables(Hockey) → describe(Hockey.Scoring) → read_guide(hockey_analytics) → describe(Hockey.Ma
+  PROMPT:    Find the top 50 NHL players by career points, excluding WHA statistics (WHA has lgID = 'WHA' and is 
+  GOLD:      SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.S
+  SUBMITTED: SELECT m.firstName, m.lastName, s.playerID, SUM(COALESCE(s.Pts,0)) AS career_pts, COUNT(DISTINCT s.year) AS seasons
+FROM
+  ERROR:     Results do not match
+
+[3/69] evals_easy | MISMATCH | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ✓  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    search_guides → list_schemas → list_tables(CraftBeer) → describe(CraftBeer.breweries) → describe(CraftBeer.beers) → sample(CraftBeer.beers) → run_sql → submit
+  PROMPT:    Identify production breweries that should be analyzed separately. Breweries producing more than 20 d
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: SELECT b.id, b.name, b.city, b.state
+FROM CraftBeer.breweries AS b
+JOIN (
+    SELECT brewery_id, COUNT(DISTINCT id) AS b
+  ERROR:     Results do not match
+
+[4/69] evals_easy | MISMATCH | schema=Hockey
+  Schema: ✓  explored=Hockey
+  Tables: ~  missed=Hockey.Master
+  Guides: hockey_analytics
+  Seq:    search_guides → read_guide(hockey_analytics) → list_schemas → list_tables(Hockey) → describe(Hockey.Scoring) → run_sql → search_guides → run_sql → describe(Hock
+  PROMPT:    Find the top 50 NHL players by average goals per season, excluding WHA statistics (lgID = 'WHA' is f
+  GOLD:      SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT 
+  SUBMITTED: SELECT playerID,
+       SUM(COALESCE(G,0)) AS total_goals,
+       COUNT(DISTINCT year) AS seasons,
+       SUM(COALESCE(G
+  ERROR:     Results do not match
+
+[5/69] evals_easy | NO_SUBMISSION | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    search_guides → list_schemas → list_tables(Countries)
+  PROMPT:    List countries by continent with their dominant languages where language percentage exceeds 90%, sho
+  GOLD:      SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.Coun
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[6/69] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → submit
+  PROMPT:    Find the top 50 players by career batting average, only considering seasons where they had at least 
+  GOLD:      SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2
+  SUBMITTED: SELECT p.playerID,
+       CONCAT(p.nameFirst, ' ', p.nameLast) AS player_name,
+       SUM(b.H) * 1.0 / SUM(b.AB) AS care
+  ERROR:     Results do not match
+
+[7/69] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ~  missed=Chess.opening
+  Guides: chess_idiosyncrasies
+  Seq:    search_guides → read_guide(chess_idiosyncrasies) → list_schemas → list_tables(Chess) → describe(Chess.game) → run_sql → submit
+  PROMPT:    What are the top three openings by games played, excluding ALL games where the opening name contains
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT opening_id, COUNT(*) AS games_played FROM Chess.game WHERE opening NOT ILIKE '%French%' AND opening NOT ILIKE '%S
+  ERROR:     Results do not match
+
+[8/69] evals_easy | AGENT_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country)
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → search_guides → describe(Countries.Metadata - Indicators) → search_guides → d
+  PROMPT:    Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclu
+  GOLD:      SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[9/69] evals_easy | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge)
+  Seq:    search_guides → list_schemas → list_tables(Credit) → describe(Credit.charge) → list_tables(Credit) → list_tables(Credit) → describe(Credit.payment) → describe(C
+  PROMPT:    Find the top 50 statements by net amount: sum of charges minus sum of refunds. Exclude test transact
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT statement_no,
+       SUM(CASE WHEN charge_code = 'RF' THEN -charge_amt ELSE charge_amt END) AS net_amount
+FROM Cr
+  ERROR:     Results do not match
+
+[10/69] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.batting, lahman_2014.halloffame, lahman_2014.players)
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.halloffame) → describe(lahman_2014.players) → describe(lahman_2014.batting) → sam
+  PROMPT:    Find the names and years of the top 50 Hall of Fame players by career hits. Remember, we only care a
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN la
+  SUBMITTED: SELECT p.nameFirst || ' ' || p.nameLast AS player_name,
+       h.yearID AS induction_year,
+       SUM(b.H) AS career_hit
+  ERROR:     Results do not match
+
+[11/69] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Guides: baseball_sabermetrics
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.pitching) → describe(lahman_2014.players) → sample(lahman_2014.pitching) → search
+  PROMPT:    Find the top 50 starting pitchers by games started, with at least 50 innings pitched, showing their 
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2
+  SUBMITTED: SELECT p.nameFirst AS first_name,
+       p.nameLast AS last_name,
+       pi.yearID AS year,
+       pi.GS AS games_starte
+  ERROR:     Results do not match
+
+[12/69] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ~  missed=Chess.opening
+  Seq:    search_guides → list_schemas → list_tables(Chess) → describe(Chess.game) → sample(Chess.game) → search_guides → run_sql → submit
+  PROMPT:    Calculate win rates for White players (with at least 5 games), excluding any games where the opening
+  GOLD:      SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FR
+  SUBMITTED: SELECT white AS player,
+       COUNT(*) AS games,
+       SUM(CASE WHEN game_result = '1-0' THEN 1 ELSE 0 END) AS wins,
+ 
+  ERROR:     Results do not match
+
+[13/69] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies
+  Seq:    search_guides → read_guide(chess_idiosyncrasies) → list_schemas → list_tables(Chess) → describe(Chess.game) → sample(Chess.game) → read_guide(chess_idiosyncrasi
+  PROMPT:    For each ECO code, show the game count, white wins, black wins, and draws, excluding games where the
+  GOLD:      SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHE
+  SUBMITTED: SELECT ECO,
+       COUNT(*) AS game_count,
+       SUM(CASE WHEN game_result = '1-0' THEN 1 ELSE 0 END) AS white_wins,
+  
+  ERROR:     Results do not match
+
+[14/69] evals_easy | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahma n_2014, lahman_2014
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahma n_2014.pitching) → describe(lahman_2014.pitching) → describe(lahman_2014.players) → run
+  PROMPT:    Find the top 8 pitchers by WHIP (Walks + Hits / Innings Pitched, lower is better) for seasons with a
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP 
+  SUBMITTED: SELECT pl.nameFirst AS first_name,
+       pl.nameLast AS last_name,
+       p.yearID AS year,
+       SUM(p.IPouts) / 3.0 
+  ERROR:     Results do not match
+
+[15/69] evals_easy | AGENT_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.City, world.Country)
+  Guides: world_geography
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → search_guides → search_guides → list_schemas → describe(Countries.Data) → sea
+  PROMPT:    List the top 50 capital cities by population, along with their countries.
+  GOLD:      SELECT co.Name as country, ci.Name as capital_city, ci.Population FROM world.Country co JOIN world.City ci ON co.Capital
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[16/69] evals_easy | MISMATCH | schema=imdb_MovieLens
+  Schema: ✓  explored=imdb_MovieLens
+  Tables: ✓  gold=(imdb_MovieLens.u2base)
+  Seq:    search_guides → list_schemas → list_tables(imdb_MovieLens) → describe(imdb_MovieLens.u2base) → describe(imdb_MovieLens.users) → submit
+  PROMPT:    Identify 'super users' in the movie ratings data. Users who have rated more than 1000 movies are con
+  GOLD:      SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000
+  SUBMITTED: SELECT userid FROM imdb_MovieLens.u2base GROUP BY userid HAVING COUNT(*) > 1000
+  ERROR:     Results do not match
+
+[17/69] evals_easy | MISMATCH | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies
+  Seq:    search_guides → read_guide(chess_idiosyncrasies) → list_schemas → list_tables(Chess) → describe(Chess.game) → describe(Chess.opening) → submit
+  PROMPT:    Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in 
+  GOLD:      SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening 
+  SUBMITTED: SELECT g.game_id,
+       o.name AS opening_name,
+       g.whiteElo,
+       g.BlackElo,
+       ABS(g.whiteElo - g.BlackEl
+  ERROR:     Results do not match
+
+[18/69] evals_easy | SQL_ERROR | schema=financial
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(financial.loan)
+  Seq:    search_guides → submit
+  PROMPT:    Find the default rate for loans, excluding 'watch list' (status B) loans from the calculation as per
+  GOLD:      SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) 
+  SUBMITTED: SELECT 1.0 * SUM(CASE WHEN default_flag THEN 1 ELSE 0 END) / COUNT(*) AS default_rate FROM financial.loan WHERE status I
+  ERROR:     Submitted query execution failed: DuckDB error: Binder Error: Referenced column "default_flag" not found in FROM clause!
+
+[19/69] evals_easy | AGENT_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country)
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → search_guides → search_guides → sample(Countries.Data) → search_guides → sear
+  PROMPT:    Find the top 50 countries by population density (population per square km), only for countries with 
+  GOLD:      SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population 
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[20/69] evals_easy | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.account, financial.district, financial.loan)
+  Seq:    search_guides → list_schemas → list_tables(financial) → describe(financial.loan) → describe(financial.district) → sample(financial.district) → describe(financia
+  PROMPT:    What is the total amount of performing loans (status 'A') by district name, excluding Prague (distri
+  GOLD:      SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d
+  SUBMITTED: SELECT d.A3 AS district_name,
+       SUM(l.amount) AS total_amount
+FROM financial.loan l
+JOIN financial.account a ON l.a
+  ERROR:     Results do not match
+
+[21/69] evals_easy | NO_SUBMISSION | schema=employee
+  Schema: ✓  explored=employee
+  Tables: ~  missed=employee.employees
+  Guides: employee_hr_policies
+  Seq:    search_guides → read_guide(employee_hr_policies) → list_schemas → list_tables(employee) → describe(employee.departments) → describe(employee.dept_emp) → read_gu
+  PROMPT:    Find salary statistics for departments where salary statistics can be reported (at least 5 employees
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JO
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[22/69] evals_easy | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Guides: credit_card_operations
+  Seq:    search_guides → read_guide(credit_card_operations) → list_schemas → list_tables(Credit) → describe(Credit.charge) → describe(Credit.member) → describe(Credit.st
+  PROMPT:    Find the top 50 member-quarters by charge count, using statement_no for period assignment, not charg
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT m.firstname, m.lastname, c.statement_no,
+       COUNT(*) AS charge_count,
+       SUM(c.charge_amt) AS total_charg
+  ERROR:     Results do not match
+
+[23/69] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Guides: f1_racing_metrics
+  Seq:    search_guides → list_schemas → list_tables(ErgastF1) → describe(ErgastF1.constructorStandings) → search_guides → describe(ErgastF1.races) → describe(ErgastF1.co
+  PROMPT:    Calculate total points by constructor and year for each season from when points systems became compa
+  GOLD:      SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.construc
+  SUBMITTED: SELECT cs.constructorId,
+       c.name AS constructor_name,
+       r.year,
+       SUM(cs.points) AS total_points
+FROM Er
+  ERROR:     Results do not match
+
+[24/69] evals_hard | NO_SUBMISSION | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Guides: baseball_sabermetrics
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.pitching) → search_guides → search_guides → sample(lahman_2014.pitching) → descri
+  PROMPT:    Find the top 50 non-reliever pitchers by ERA (Earned Run Average). Show the player's first and last 
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FR
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[25/69] evals_hard | SQL_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Guides: world_geography
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → search_guides → list_tables(Countries) → sample(Countries.Data) → search_guid
+  PROMPT:    Find country names where the sum of language percentages exceeds 100% due to multilingualism.
+  GOLD:      SELECT co.Name FROM world.Country co JOIN world.CountryLanguage cl ON co.Code = cl.CountryCode GROUP BY co.Name HAVING S
+  SUBMITTED: SELECT "Country Name"
+FROM "Countries"."Data"
+WHERE "Indicator Name" ILIKE '%language%'
+GROUP BY "Country Name"
+HAVING S
+  ERROR:     Submitted query execution failed: DuckDB error: Binder Error: Referenced column "Value" not found in FROM clause!
+Candid
+
+[26/69] evals_hard | MISMATCH | schema=Hockey
+  Schema: ✓  explored=Hockey
+  Tables: ✓  gold=(Hockey.Master, Hockey.Scoring)
+  Guides: hockey_analytics
+  Seq:    search_guides → read_guide(hockey_analytics) → list_schemas → list_tables(Hockey) → describe(Hockey.Scoring) → read_guide(hockey_analytics) → describe(Hockey.Ma
+  PROMPT:    Find the top 50 NHL players by career points, only including players with at least 5 seasons.
+  GOLD:      SELECT s.playerID, m.firstName, m.lastName, SUM(s.Pts) as career_points, COUNT(DISTINCT s.year) as seasons FROM Hockey.S
+  SUBMITTED: SELECT m.firstName || ' ' || m.lastName AS player_name,
+       SUM(COALESCE(s.Pts, 0)) AS career_points,
+       COUNT(DI
+  ERROR:     Results do not match
+
+[27/69] evals_hard | NO_SUBMISSION | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.loan)
+  Guides: financial_operations
+  Seq:    search_guides → read_guide(financial_operations) → list_schemas → list_tables(financial) → describe(financial.loan) → search_guides → read_guide(financial_opera
+  PROMPT:    Calculate the loan portfolio size by status for each loan classification. Show the loan classificati
+  GOLD:      SELECT CASE WHEN status = 'A' THEN 'Performing' WHEN status = 'B' THEN 'Watch List' WHEN status IN ('C', 'D') THEN 'Non-
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[28/69] evals_hard | NO_SUBMISSION | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ~  missed=Chess.opening
+  Seq:    search_guides → list_schemas → list_tables(Chess) → describe(Chess.game) → sample(Chess.game)
+  PROMPT:    For each ECO code, show the game count, white wins, black wins, and draws. Only include ECO codes wi
+  GOLD:      SELECT g.ECO, COUNT(*) as game_count, SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) as white_wins, SUM(CASE WHE
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[29/69] evals_hard | AGENT_ERROR | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ✓  gold=(CraftBeer.beers)
+  Guides: craft_beer_inventory
+  Seq:    search_guides → read_guide(craft_beer_inventory) → list_schemas → list_tables(CraftBeer) → describe(CraftBeer.beers) → read_guide(craft_beer_inventory) → read_g
+  PROMPT:    Count the number of beers missing IBU data that should be flagged for data quality analysis.
+  GOLD:      SELECT COUNT(*) as missing_ibu_count FROM CraftBeer.beers b WHERE b.ibu IS NULL
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[30/69] evals_hard | AGENT_ERROR | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies, chess_idiosyncries
+  Seq:    search_guides → list_schemas → list_tables(Chess) → read_guide(chess_idiosyncrasies) → describe(Chess.game) → describe(Chess.opening) → run_sql → read_guide(che
+  PROMPT:    Calculate win rates for White players (with at least 5 games). Return the 30 players with the highes
+  GOLD:      SELECT g.white as player, CAST(SUM(CASE WHEN g.game_result = '1-0' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as win_rate FR
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[31/69] evals_hard | SQL_ERROR | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies
+  Seq:    search_guides → read_guide(chess_idiosyncrasies) → list_schemas → list_tables(Chess) → describe(Chess.game) → read_guide(chess_idiosyncrasies) → submit
+  PROMPT:    What are the top three openings by games played? Count games separately for each opening_id (do not 
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: SELECT g.opening_id, COUNT(*) AS game_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening_id WHERE 
+  ERROR:     Submitted query execution failed: DuckDB error: Binder Error: Table "o" does not have a column named "opening"
+
+Candidat
+
+[32/69] evals_hard | NO_SUBMISSION | schema=Airline
+  Schema: ✓  explored=Airline
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Guides: airline_operations
+  Seq:    search_guides → list_schemas → list_tables(Airline) → read_guide(airline_operations) → describe(Airline.On_Time_On_Time_Performance_2016_1) → run_sql → run_sql 
+  PROMPT:    Analyze completed flights by day of week for January 2016. Give total flights, on-time flights, and 
+  GOLD:      SELECT DayOfWeek, COUNT(*) as total_flights, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time_flights, 
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[33/69] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✓  explored=(none)
+  Tables: ~  missed=CraftBeer.beers
+  Seq:    search_guides → list_schemas → submit
+  PROMPT:    For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate aver
+  GOLD:      SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style
+  SUBMITTED: SELECT 
+  CASE 
+    WHEN lower(style_name) LIKE '%ipa%' OR lower(style_name) LIKE '%india pale ale%' THEN 'IPA'
+    WHEN
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name Beer does not exist!
+Did you mean "beers"
+
+[34/69] evals_hard | SQL_ERROR | schema=employee
+  Schema: ✓  explored=employee
+  Tables: ✓  gold=(employee.employees, employee.salaries)
+  Guides: employee_hr_policies
+  Seq:    search_guides → list_schemas → list_tables(employee) → describe(employee.employees) → describe(employee.salaries) → describe(employee.dept_emp) → sample(employe
+  PROMPT:    Compare average salaries by gender for current employees.
+  GOLD:      SELECT e.gender, AVG(s.salary) as avg_salary FROM employee.employees e JOIN employee.salaries s ON e.emp_no = s.emp_no W
+  SUBMITTED: SELECT 
+    e.gender,
+    AVG(s.salary) AS avg_salary,
+    AVG(s.salary) - AVG(CASE WHEN e.gender = 'M' THEN s.salary EN
+  ERROR:     Submitted query execution failed: DuckDB error: Binder Error: column "salary" must appear in the GROUP BY clause or must
+
+[35/69] evals_hard | AGENT_ERROR | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.provider)
+  Guides: credit_card_operations
+  Seq:    search_guides → read_guide(credit_card_operations) → list_schemas → list_tables(Credit) → describe(Credit.provider) → describe(Credit.charge) → search_guides → 
+  PROMPT:    Find providers with fewer than 100 total charges that should be aggregated as 'Long tail providers'.
+  GOLD:      SELECT p.provider_no, COUNT(*) as charge_count FROM Credit.charge c JOIN Credit.provider p ON c.provider_no = p.provider
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[36/69] evals_hard | MISMATCH | schema=employee
+  Schema: ✓  explored=employee
+  Tables: ✓  gold=(employee.departments, employee.dept_emp, employee.employees, employee.salaries)
+  Guides: employee_hr_policies
+  Seq:    search_guides → read_guide(employee_hr_policies) → list_schemas → list_tables(employee) → describe(employee.employees) → read_guide(employee_hr_policies) → read
+  PROMPT:    Find salary statistics for departments where salary statistics can be reported. Show me employee cou
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JO
+  SUBMITTED: WITH latest_dept AS (
+  SELECT emp_no, dept_no
+  FROM employee.dept_emp
+  WHERE to_date = '9999-01-01'
+),
+latest_salary 
+  ERROR:     Results do not match
+
+[37/69] evals_hard | NO_SUBMISSION | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge)
+  Guides: credit_card_operations
+  Seq:    search_guides → list_schemas → list_tables(Credit) → describe(Credit.charge) → describe(Credit.category) → sample(Credit.charge) → search_guides → read_guide(cr
+  PROMPT:    Group charges by spending type. Show the spending_type, charge_count, and total_amount.
+  GOLD:      SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionar
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[38/69] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.batting) → describe(lahman_2014.players) → submit
+  PROMPT:    Find the top 10 batters (name, year) by batting average (H/AB).
+  GOLD:      SELECT p.nameFirst, p.nameLast, b.yearID, CAST(b.H AS REAL) / b.AB as batting_avg FROM lahman_2014.batting b JOIN lahman
+  SUBMITTED: WITH stats AS (
+    SELECT b.playerID, b.yearID,
+           SUM(b.H) AS H,
+           SUM(b.AB) AS AB
+    FROM lahman_20
+  ERROR:     Results do not match
+
+[39/69] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ~  missed=Credit.charge
+  Guides: credit_card_operations
+  Seq:    search_guides → list_schemas → list_tables(Credit) → describe(Credit.statement) → describe(Credit.payment) → search_guides → read_guide(credit_card_operations) 
+  PROMPT:    Find the top 50 statements by net amount.
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT * FROM Credit.statement ORDER BY statement_amt DESC LIMIT 50
+  ERROR:     Results do not match
+
+[40/69] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=Airline
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Guides: airline_operations
+  Seq:    search_guides → list_schemas → read_guide(airline_operations) → list_tables(Airline) → describe(Airline.On_Time_On_Time_Performance_2016_1) → run_sql → read_gui
+  PROMPT:    Find all origin/destination airport pairs that are thin routes. How many such pairs are there?
+  GOLD:      SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepT
+  SUBMITTED: SELECT Origin, Dest
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE Cancelled = 0
+  AND Diverted = 0
+  AND DepTime
+  ERROR:     Results do not match
+
+[41/69] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Guides: baseball_sabermetrics
+  Seq:    search_guides → read_guide(baseball_sabermetrics) → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.pitching) → describe(lahman_2014.players) → r
+  PROMPT:    Find the top 50 starting pitchers by games started, showing their season statistics. I want to see t
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2
+  SUBMITTED: SELECT p.nameFirst AS first_name,
+       p.nameLast AS last_name,
+       pi.yearID AS year,
+       pi.GS AS games_starte
+  ERROR:     Results do not match
+
+[42/69] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=Airline
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Guides: airline_operations
+  Seq:    search_guides → list_schemas → list_tables(Airline) → describe(Airline.On_Time_On_Time_Performance_2016_1) → search_guides → read_guide(airline_operations) → ru
+  PROMPT:    Find the top route with the most severe delays. Only count completed flights. Show the origin, desti
+  GOLD:      SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinute
+  SUBMITTED: SELECT Origin, Dest, COUNT(*) AS severe_delay_count
+FROM Airline.On_Time_On_Time_Performance_2016_1
+WHERE DepTime IS NOT
+  ERROR:     Results do not match
+
+[43/69] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.races, ErgastF1.results)
+  Seq:    search_guides → list_schemas → list_tables(ErgastF1) → describe(ErgastF1.results) → describe(ErgastF1.constructors) → describe(ErgastF1.races) → run_sql → run_s
+  PROMPT:    List each constructor-season combination where the constructor scored more than 100 total points, fo
+  GOLD:      SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors 
+  SUBMITTED: SELECT c.name AS constructor_name, r.year, SUM(res.points) AS total_points
+FROM ErgastF1.results res
+JOIN ErgastF1.races
+  ERROR:     Results do not match
+
+[44/69] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=financial
+  Tables: ✗  gold=(Credit.charge)
+  Guides: financial_operations
+  Seq:    search_guides → read_guide(financial_operations) → list_schemas → list_tables(financial) → describe(financial.trans) → read_guide(financial_operations) → run_sq
+  PROMPT:    Calculate the average transaction value.
+  GOLD:      SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND char
+  SUBMITTED: SELECT AVG(amount) AS avg_transaction_value FROM financial.trans WHERE k_symbol IS NOT NULL AND k_symbol <> 'UROK' AND N
+  ERROR:     Results do not match
+
+[45/69] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Seq:    search_guides → list_schemas → list_tables(Credit) → describe(Credit.charge) → describe(Credit.member) → search_guides → run_sql → submit
+  PROMPT:    Find the top 25 members (member_no, first name, last name, and net_charge_volume) by net charge volu
+  GOLD:      SELECT m.member_no, m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END
+  SUBMITTED: SELECT ch.member_no,
+       m.firstname,
+       m.lastname,
+       SUM(CASE WHEN ch.charge_code = 'RF' THEN -ch.charge_a
+  ERROR:     Results do not match
+
+[46/69] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Seq:    search_guides → list_schemas → list_tables(Credit) → describe(Credit.member) → describe(Credit.charge) → describe(Credit.statement) → run_sql → run_sql → submit
+  PROMPT:    Find the top 50 member-quarters by charge count. I want to see the member's first and last name, the
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT m.firstname,
+       m.lastname,
+       s.statement_no,
+       DATE_TRUNC('quarter', c.charge_dt) AS quarter_start
+  ERROR:     Results do not match
+
+[47/69] evals_hard | AGENT_ERROR | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.loan)
+  Guides: financial_operations
+  Seq:    search_guides → read_guide(financial_operations) → list_schemas → list_tables(financial) → describe(financial.loan) → read_guide(financial_operations) → search_
+  PROMPT:    Find the default rate for loans.
+  GOLD:      SELECT CAST(COUNT(CASE WHEN status IN ('C', 'D') THEN 1 END) AS REAL) / COUNT(CASE WHEN status NOT IN ('B') THEN 1 END) 
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[48/69] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    search_guides → submit
+  PROMPT:    Find the top 50 session beers by ABV. Note: ABV is stored as a decimal (e.g., 0.05 for 5%). I'd like
+  GOLD:      SELECT b.name as beer_name, b.abv, b.style, br.name as brewery FROM CraftBeer.beers b JOIN CraftBeer.breweries br ON b.b
+  SUBMITTED: SELECT b.name AS beer_name,
+       b.abv,
+       s.style_name AS style,
+       br.name AS brewery_name
+FROM craft_beer.b
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name beer does not exist!
+Did you mean "CraftB
+
+[49/69] evals_hard | MISMATCH | schema=employee
+  Schema: ✓  explored=employee
+  Tables: ~  missed=employee.dept_manager
+  Seq:    search_guides → list_schemas → list_tables(employee) → run_sql → submit
+  PROMPT:    Calculate the current headcount by department based on their current department assignment, counting
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT de.emp_no) as headcount FROM employee.dept_emp de JOIN employee.departments d ON de.d
+  SUBMITTED: SELECT d.dept_name AS department, COUNT(DISTINCT de.emp_no) AS headcount
+FROM employee.dept_emp de
+JOIN employee.departm
+  ERROR:     Results do not match
+
+[50/69] evals_hard | NO_SUBMISSION | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.drivers, ErgastF1.results)
+  Guides: f1_racing_metrics
+  Seq:    search_guides → read_guide(f1_racing_metrics) → list_schemas → list_tables(ErgastF1) → describe(ErgastF1.status) → describe(ErgastF1.drivers) → describe(ErgastF
+  PROMPT:    Find the top 30 F1 drivers (first name and last name) by race completion rate, only including driver
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 EL
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[51/69] evals_hard | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.trans)
+  Guides: financial_operations
+  Seq:    search_guides → list_schemas → list_tables(financial) → describe(financial.trans) → search_guides → read_guide(financial_operations) → sample(financial.trans) →
+  PROMPT:    Calculate transaction statistics (total deposits, total deposit amount, and average deposit amount).
+  GOLD:      SELECT COUNT(*) as total_deposits, SUM(amount) as total_deposit_amount, AVG(amount) as avg_deposit_amount FROM financial
+  SUBMITTED: SELECT COUNT(*) AS total_deposits,
+       SUM(amount) AS total_deposit_amount,
+       AVG(CASE WHEN amount >= 1000 THEN 
+  ERROR:     Results do not match
+
+[52/69] evals_hard | NO_SUBMISSION | schema=financial
+  Schema: ✗  explored=(none)
+  Tables: ✗  gold=(financial.account, financial.district, financial.loan)
+  Seq:    search_guides → list_schemas
+  PROMPT:    Show the region, loan count, total loan amount, and average loan amount for each loan classification
+  GOLD:      SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, S
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[53/69] evals_hard | SQL_ERROR | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ✓  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    search_guides → list_schemas → list_tables(CraftBeer) → describe(CraftBeer.beers) → submit
+  PROMPT:    List 'high-gravity' beers along with their brewery information and abv. Note: ABV is stored as a dec
+  GOLD:      SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.bee
+  SUBMITTED: SELECT b.name AS beer_name, b.abv, br.name AS brewery_name, br.city, br.state, br.country FROM CraftBeer.beers b JOIN Cr
+  ERROR:     Submitted query execution failed: DuckDB error: Binder Error: Table "br" does not have a column named "country"
+
+Candida
+
+[54/69] evals_hard | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.account, financial.district, financial.loan)
+  Guides: financial_operations
+  Seq:    search_guides → read_guide(financial_operations) → list_schemas → list_tables(financial) → describe(financial.loan) → read_guide(financial_operations) → describ
+  PROMPT:    What is the total amount of performing loans by district name?
+  GOLD:      SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d
+  SUBMITTED: SELECT d.A2 AS district_name,
+       SUM(l.amount) AS total_amount
+FROM financial.loan l
+JOIN financial.account a ON l.a
+  ERROR:     Results do not match
+
+[55/69] evals_hard | AGENT_ERROR | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country, world.CountryLanguage)
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → search_guides → list_tables(Countries) → describe(Countries.Metadata - Countr
+  PROMPT:    List countries by continent with their dominant languages where language percentage exceeds 90%, sho
+  GOLD:      SELECT co.Continent, co.Name as country, cl.Language, cl.Percentage, cl.IsOfficial FROM world.Country co JOIN world.Coun
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[56/69] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.drivers, ErgastF1.races, ErgastF1.results)
+  Seq:    search_guides → list_schemas → list_tables(ErgastF1) → submit
+  PROMPT:    Compare Mercedes teammate performance in the 2015 F1 season, showing race-by-race position compariso
+  GOLD:      SELECT r1.raceId, ra.year, c.name as constructor, d1.surname as driver1, d2.surname as driver2, r1.position as driver1_p
+  SUBMITTED: WITH mercedes_races AS (
+  SELECT r.raceId,
+         ra.year,
+         c.name AS constructor_name,
+         r.driverId,
+
+  ERROR:     Results do not match
+
+[57/69] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.drivers, ErgastF1.lapTimes)
+  Guides: f1_racing_metrics
+  Seq:    search_guides → read_guide(f1_racing_metrics) → list_schemas → list_tables(ErgastF1) → describe(ErgastF1.lapTimes) → describe(ErgastF1.drivers) → read_guide(f1_
+  PROMPT:    Find the top 30 driver names by fastest lap time.
+  GOLD:      SELECT d.forename, d.surname, MIN(lt.milliseconds) as fastest_lap_ms FROM ErgastF1.lapTimes lt JOIN ErgastF1.drivers d O
+  SUBMITTED: SELECT d.forename || ' ' || d.surname AS driver_name,
+       MIN(l.milliseconds) AS fastest_ms
+FROM ErgastF1.lapTimes l
+
+  ERROR:     Results do not match
+
+[58/69] evals_hard | MISMATCH | schema=world
+  Schema: ✓  explored=world
+  Tables: ✓  gold=(world.City, world.Country)
+  Seq:    search_guides → list_schemas → list_tables(world) → describe(world.City) → search_guides → describe(world.Country) → run_sql → submit
+  PROMPT:    List major cities along with their country information.
+  GOLD:      SELECT ci.Name as city_name, ci.Population, co.Name as country_name, co.Continent, co.Region FROM world.City ci JOIN wor
+  SUBMITTED: SELECT c.Name AS city_name,
+       c.Population AS city_population,
+       co.Name AS country_name,
+       co.Continent,
+  ERROR:     Results do not match
+
+[59/69] evals_hard | NO_SUBMISSION | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies, chess_idiosyncries
+  Seq:    search_guides → list_schemas → list_tables(Chess) → read_guide(chess_idiosyncrasies) → describe(Chess.opening) → describe(Chess.game) → sample(Chess.game) → rea
+  PROMPT:    Find the top three draw results in chess games, grouped by opening id and name.
+  GOLD:      SELECT o.name as opening_name, COUNT(*) as draw_count FROM Chess.game g JOIN Chess.opening o ON g.opening_id = o.opening
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[60/69] evals_hard | NO_SUBMISSION | schema=world
+  Schema: ✗  explored=Countries
+  Tables: ✗  gold=(world.Country)
+  Seq:    search_guides → list_schemas → list_tables(Countries) → describe(Countries.Data) → describe(Countries.Metadata - Indicators) → search_guides → search_guides → d
+  PROMPT:    Find the top 50 countries by population density. Show names and densities.
+  GOLD:      SELECT c.Name, CAST(c.Population AS REAL) / c.SurfaceArea as population_density FROM world.Country c WHERE c.Population 
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[61/69] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=ErgastF1
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.results)
+  Guides: f1_racing_metrics
+  Seq:    search_guides → list_schemas → list_tables(ErgastF1) → describe(ErgastF1.races) → describe(ErgastF1.results) → describe(ErgastF1.constructors) → sample(ErgastF1
+  PROMPT:    Find the top 30 constructors with the highest number of races where at least two cars started.
+  GOLD:      SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN Erga
+  SUBMITTED: WITH races_with_two AS (
+  SELECT raceId
+  FROM ErgastF1.results
+  WHERE grid > 0
+  GROUP BY raceId
+  HAVING COUNT(*) >=
+  ERROR:     Results do not match
+
+[62/69] evals_hard | SQL_ERROR | schema=imdb_MovieLens
+  Schema: ✗  explored=ml, movie
+  Tables: ✗  gold=(imdb_MovieLens.u2base)
+  Seq:    search_guides → search_guides → search_guides → search_guides → search_guides → list_schemas → list_schemas → list_schemas → list_tables(movie) → list_tables(ml
+  PROMPT:    Identify 'super users' by id in the movie ratings data, showing the number of ratings they've given.
+  GOLD:      SELECT u.userid, COUNT(*) as ratings_given FROM imdb_MovieLens.u2base u GROUP BY u.userid HAVING COUNT(*) > 1000
+  SUBMITTED: SELECT userId AS user_id, COUNT(*) AS rating_count
+FROM ml.ratings
+GROUP BY userId
+ORDER BY rating_count DESC
+  ERROR:     Submitted query execution failed: DuckDB error: Catalog Error: Table with name ratings does not exist!
+Did you mean "tra
+
+[63/69] evals_hard | MISMATCH | schema=employee
+  Schema: ✓  explored=employee
+  Tables: ✓  gold=(employee.employees, employee.salaries)
+  Seq:    search_guides → list_schemas → list_tables(employee) → describe(employee.salaries) → describe(employee.employees) → search_guides → sample(employee.salaries) → 
+  PROMPT:    Compare current average salaries between 'Legacy' and 'Recent' workforce.
+  GOLD:      SELECT CASE WHEN e.hire_date < '1990-01-01' THEN 'Legacy' ELSE 'Recent' END as cohort, AVG(s.salary) as avg_salary FROM 
+  SUBMITTED: WITH latest AS (
+    SELECT emp_no, salary
+    FROM (
+        SELECT emp_no, salary, from_date,
+               ROW_NUMBE
+  ERROR:     Results do not match
+
+[64/69] evals_hard | AGENT_ERROR | schema=Hockey
+  Schema: ✓  explored=Hockey
+  Tables: ~  missed=Hockey.Master
+  Guides: hockey_analytics
+  Seq:    search_guides → read_guide(hockey_analytics) → list_schemas → list_tables(Hockey) → describe(Hockey.Scoring) → read_guide(hockey_analytics) → search_guides → re
+  PROMPT:    Find the top 50 NHL players by average goals per season, only including players with at least 5 seas
+  GOLD:      SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT 
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
+[65/69] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=Airline
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Guides: airline_operations
+  Seq:    search_guides → list_schemas → list_tables(Airline) → describe(Airline.On_Time_On_Time_Performance_2016_1) → search_guides → run_sql → run_sql → read_guide(airl
+  PROMPT:    What is the on-time performance percentage for each unique airline carrier? Round the percentage to 
+  GOLD:      SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_p
+  SUBMITTED: SELECT UniqueCarrier,
+       ROUND(100.0 * SUM(CASE WHEN ArrDelay <= 15 THEN 1 ELSE 0 END) / COUNT(*), 2) AS on_time_per
+  ERROR:     Results do not match
+
+[66/69] evals_hard | MISMATCH | schema=Chess
+  Schema: ✓  explored=Chess
+  Tables: ✓  gold=(Chess.game, Chess.opening)
+  Guides: chess_idiosyncrasies
+  Seq:    search_guides → read_guide(chess_idiosyncrasies) → list_schemas → list_tables(Chess) → describe(Chess.game) → describe(Chess.opening) → submit
+  PROMPT:    Identify games with rating mismatches (Elo difference > 400 points) that should be weighted 0.5x in 
+  GOLD:      SELECT g.game_id, g.white, g.black, g.whiteElo, g.BlackElo, ABS(g.whiteElo - g.BlackElo) as elo_diff, o.name as opening 
+  SUBMITTED: SELECT game_id, 0.5 AS weight FROM Chess.game WHERE ABS(whiteElo - BlackElo) > 400
+  ERROR:     Results do not match
+
+[67/69] evals_hard | NO_SUBMISSION | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ~  missed=CraftBeer.breweries
+  Guides: craft_beer_inventory
+  Seq:    search_guides → read_guide(craft_beer_inventory) → list_schemas → list_tables(CraftBeer) → describe(CraftBeer.beers) → read_guide(craft_beer_inventory) → read_g
+  PROMPT:    Identify production breweries that should be analyzed separately.
+  GOLD:      SELECT br.id, br.name, COUNT(b.id) as beer_count FROM CraftBeer.breweries br JOIN CraftBeer.beers b ON br.id = b.brewery
+  SUBMITTED: (none)
+  ERROR:     No answer submitted (agent did not call submit_answer)
+
+[68/69] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=lahman_2014
+  Tables: ✓  gold=(lahman_2014.batting, lahman_2014.halloffame, lahman_2014.players)
+  Seq:    search_guides → list_schemas → list_tables(lahman_2014) → describe(lahman_2014.halloffame) → search_guides → describe(lahman_2014.players) → describe(lahman_201
+  PROMPT:    Find the names and years of the top 50 Hall of Fame players by career hits.
+  GOLD:      SELECT p.nameFirst, p.nameLast, h.yearID as inducted_year, sum(b.H) as career_hits FROM lahman_2014.halloffame h JOIN la
+  SUBMITTED: SELECT p.nameFirst || ' ' || p.nameLast AS player_name,
+       h.yearID AS induction_year,
+       SUM(b.H) AS career_hit
+  ERROR:     Results do not match
+
+[69/69] evals_hard | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.account, financial.trans)
+  Guides: financial_operations
+  Seq:    search_guides → list_schemas → list_tables(financial) → read_guide(financial_operations) → describe(financial.trans) → sample(financial.trans) → describe(financ
+  PROMPT:    Find the top 30 accounts by total absolute transaction volume, excluding legacy transactions?
+  GOLD:      SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id 
+  SUBMITTED: SELECT account_id, SUM(ABS(amount)) AS total_volume
+FROM financial.trans
+WHERE date >= DATE '1995-01-01'
+GROUP BY accoun
+  ERROR:     Results do not match
+

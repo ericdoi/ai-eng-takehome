@@ -1,0 +1,330 @@
+
+============================================================
+Run analysis: 64 cases, 38 passed, 26 failed
+============================================================
+
+Failures by type:
+  MISMATCH              25
+  AGENT_ERROR            1
+
+Navigation funnel (all cases):
+  Right schema:   62/64  (97%)
+  Right tables:   56/64  (88%)  [of schema-correct: 56/62]
+  Right logic:    38/64  (59%)  [of table-correct: 38/56]
+
+Failures by schema (gold query):
+  Credit                                5 failures  [MISMATCH×5]
+  Airline                               4 failures  [MISMATCH×4]
+  ErgastF1                              4 failures  [MISMATCH×4]
+  lahman_2014                           4 failures  [MISMATCH×4]
+  CraftBeer                             3 failures  [MISMATCH×3]
+  financial                             3 failures  [MISMATCH×2, AGENT_ERROR×1]
+  world                                 1 failures  [MISMATCH×1]
+  employee                              1 failures  [MISMATCH×1]
+  Hockey                                1 failures  [MISMATCH×1]
+
+Failures by navigation stage:
+  Wrong schema:    2  (never reached gold schema)
+  Wrong tables:    5  (schema ok, missed a gold table)
+  Wrong logic:    19  (right tables, wrong query)
+
+============================================================
+Failed cases detail:
+============================================================
+
+[1/26] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    What is the on-time performance percentage for each unique airline carrier? Round the percentage to 
+  GOLD:      SELECT UniqueCarrier, ROUND((SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as on_time_p
+  SUBMITTED: SELECT f.UniqueCarrier AS Carrier,
+       c.Description AS CarrierName,
+       ROUND(100.0 * SUM(CASE WHEN f.ArrDelayMin
+  ERROR:     Results do not match
+
+[2/26] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(ErgastF1.drivers, ErgastF1.results)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 30 F1 drivers (first name and last name) by race completion rate, only including driver
+  GOLD:      SELECT d.forename, d.surname, COUNT(*) as total_races, SUM(CASE WHEN r.position IS NOT NULL AND r.position > 0 THEN 1 EL
+  SUBMITTED: SELECT d.forename AS first_name,
+       d.surname AS last_name,
+       COUNT(*) AS total_races,
+       SUM(CASE WHEN r.s
+  ERROR:     Results do not match
+
+[3/26] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(lahman_2014.batting, lahman_2014.players)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 50 players by career batting average, only including players with at least 500 career a
+  GOLD:      SELECT p.nameFirst, p.nameLast, CAST(SUM(b.H) AS REAL) / SUM(b.AB) as career_ba FROM lahman_2014.batting b JOIN lahman_2
+  SUBMITTED: SELECT p.playerID, p.nameFirst, p.nameLast, SUM(b.H) AS career_hits, SUM(b.AB) AS career_AB, SUM(b.H)::DOUBLE / NULLIF(S
+  ERROR:     Results do not match
+
+[4/26] evals_hard | MISMATCH | schema=CraftBeer
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(CraftBeer.beers)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    For beers missing IBU data, impute a value of 20 (typical for lagers/wheat beers) and calculate aver
+  GOLD:      SELECT b.style, AVG(COALESCE(b.ibu, 20)) as avg_ibu_imputed FROM CraftBeer.beers b GROUP BY b.style
+  SUBMITTED: SELECT 
+  CASE 
+    WHEN style LIKE '%IPA%' OR style LIKE '%India Pale Ale%' THEN 'IPA'
+    WHEN style LIKE '%Stout%' OR
+  ERROR:     Results do not match
+
+[5/26] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 50 starting pitchers by games started, showing their season statistics. I want to see t
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.GS as games_started, pi.IPouts / 3 as innings_pitched, pi.ER FROM lahman_2
+  SUBMITTED: SELECT p.nameFirst, p.nameLast, pi.yearID AS year, pi.GS AS games_started,
+       pi.IPouts/3.0 AS innings_pitched,
+    
+  ERROR:     Results do not match
+
+[6/26] evals_hard | MISMATCH | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ✓  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    find_schema → list_tables(CraftBeer) → describe(CraftBeer.beers) → describe(CraftBeer.breweries) → run_sql → run_sql → run_sql → run_sql → run_sql → submit
+  PROMPT:    Find beers with 'extreme' bitterness. Return the beer name, IBU, style, and brewery name.
+  GOLD:      SELECT b.name as beer_name, b.ibu, b.style, br.name as brewery_name FROM CraftBeer.beers b JOIN CraftBeer.breweries br O
+  SUBMITTED: SELECT b.name AS beer_name,
+       b.ibu,
+       b.style,
+       br.name AS brewery_name
+FROM CraftBeer.beers b
+LEFT JOI
+  ERROR:     Results do not match
+
+[7/26] evals_hard | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ~  missed=financial.account
+  Seq:    find_schema → describe(financial.trans) → run_sql → submit
+  PROMPT:    Find the top 30 accounts by total absolute transaction volume, excluding legacy transactions?
+  GOLD:      SELECT a.account_id, SUM(ABS(t.amount)) as total_volume FROM financial.account a JOIN financial.trans t ON a.account_id 
+  SUBMITTED: SELECT account_id,
+       SUM(ABS(amount)) AS total_abs_volume
+FROM financial.trans
+WHERE date >= '1995-01-01'
+GROUP BY 
+  ERROR:     Results do not match
+
+[8/26] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ~  missed=ErgastF1.results
+  Seq:    find_schema → find_schema → run_sql → run_sql → submit
+  PROMPT:    Calculate total points by constructor and year for each season from when points systems became compa
+  GOLD:      SELECT c.name as constructor_name, ra.year, SUM(r.points) as total_points FROM ErgastF1.results r JOIN ErgastF1.construc
+  SUBMITTED: SELECT c.constructorId,
+       c.constructorRef,
+       ra.year,
+       SUM(cr.points) AS total_points
+FROM ErgastF1.con
+  ERROR:     Results do not match
+
+[9/26] evals_hard | MISMATCH | schema=CraftBeer
+  Schema: ✓  explored=CraftBeer
+  Tables: ✓  gold=(CraftBeer.beers, CraftBeer.breweries)
+  Seq:    find_schema → describe(CraftBeer.breweries) → describe(CraftBeer.beers) → run_sql → run_sql → submit
+  PROMPT:    List 'high-gravity' beers along with their brewery information and abv. Note: ABV is stored as a dec
+  GOLD:      SELECT b.name as beer_name, b.abv as abv_percent, b.style, br.name as brewery_name, br.city, br.state FROM CraftBeer.bee
+  SUBMITTED: SELECT b.id AS beer_id,
+       b.name AS beer_name,
+       b.abv,
+       br.id AS brewery_id,
+       br.name AS brewery_
+  ERROR:     Results do not match
+
+[10/26] evals_hard | MISMATCH | schema=world
+  Schema: ✗  explored=nations
+  Tables: ✗  gold=(world.Country)
+  Seq:    find_schema → run_sql → describe(nations.stat) → submit
+  PROMPT:    Find countries with small populations (< 100,000) - economic data for these may be unreliable. Exclu
+  GOLD:      SELECT c.Name, c.Population, c.GNP FROM world.Country c WHERE c.Population < 100000 AND c.Population > 0
+  SUBMITTED: SELECT c.country AS country_name, s.popabs AS population, s.GNP AS gross_national_product FROM nations.country c LEFT JO
+  ERROR:     Results do not match
+
+[11/26] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Seq:    find_schema → list_tables(Credit) → describe(Credit.member) → run_sql → describe(Credit.charge) → describe(Credit.statement) → find_schema → find_schema → find_
+  PROMPT:    Find the top 50 member-quarters by charge count. I want to see the member's first and last name, the
+  GOLD:      SELECT m.firstname, m.lastname, c.statement_no, COUNT(*) as charge_count, SUM(c.charge_amt) as total_charges FROM Credit
+  SUBMITTED: SELECT m.firstname,
+       m.lastname,
+       MIN(s.statement_no) AS statement_no,
+       DATE_TRUNC('quarter', s.statem
+  ERROR:     Results do not match
+
+[12/26] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find all origin/destination airport pairs that are thin routes. How many such pairs are there?
+  GOLD:      SELECT COUNT(*) AS thin_route_count FROM (SELECT Origin, Dest FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE DepT
+  SUBMITTED: SELECT Origin, Dest, COUNT(*) OVER () AS total_thin_pairs
+FROM (
+  SELECT Origin, Dest
+  FROM Airline.On_Time_On_Time_Pe
+  ERROR:     Results do not match
+
+[13/26] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=ConsumerExpenditures, Credit
+  Tables: ✓  gold=(Credit.charge)
+  Seq:    find_schema → run_sql → run_sql → run_sql → describe(Credit.charge) → list_tables(Credit) → describe(Credit.category) → find_schema → list_tables(ConsumerExpend
+  PROMPT:    Group charges by spending type. Show the spending_type, charge_count, and total_amount.
+  GOLD:      SELECT CASE WHEN c.category_no BETWEEN 1 AND 10 THEN 'Essential' WHEN c.category_no BETWEEN 11 AND 20 THEN 'Discretionar
+  SUBMITTED: SELECT 
+  CASE 
+    WHEN c.category_no BETWEEN 1 AND 10 THEN 'essential'
+    WHEN c.category_no BETWEEN 11 AND 20 THEN '
+  ERROR:     Results do not match
+
+[14/26] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top route with the most severe delays. Only count completed flights. Show the origin, desti
+  GOLD:      SELECT Origin, Dest, COUNT(*) as severe_delay_count FROM Airline.On_Time_On_Time_Performance_2016_1 WHERE ArrDelayMinute
+  SUBMITTED: SELECT Origin AS origin, Dest AS destination, COUNT(*) AS severe_delay_count
+FROM Airline.On_Time_On_Time_Performance_20
+  ERROR:     Results do not match
+
+[15/26] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ~  missed=ErgastF1.results
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    List each constructor-season combination where the constructor scored more than 100 total points, fo
+  GOLD:      SELECT c.name AS constructor, ra.year, SUM(r.points) AS total_points FROM ErgastF1.results r JOIN ErgastF1.constructors 
+  SUBMITTED: SELECT c.constructorRef AS constructor_name,
+       r.year,
+       SUM(cr.points) AS total_points
+FROM ErgastF1.construc
+  ERROR:     Results do not match
+
+[16/26] evals_hard | MISMATCH | schema=employee
+  Schema: ✓  explored=(none)
+  Tables: ~  missed=employee.employees
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find salary statistics for departments where salary statistics can be reported. Show me employee cou
+  GOLD:      SELECT d.dept_name, COUNT(DISTINCT e.emp_no) as employee_count, AVG(s.salary) as avg_salary FROM employee.dept_emp de JO
+  SUBMITTED: WITH cur_dept AS (
+ SELECT de.emp_no, de.dept_no,
+        ROW_NUMBER() OVER (PARTITION BY de.emp_no ORDER BY de.from_dat
+  ERROR:     Results do not match
+
+[17/26] evals_hard | MISMATCH | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.account, financial.district, financial.loan)
+  Seq:    find_schema → list_tables(financial) → run_sql → submit
+  PROMPT:    Show the region, loan count, total loan amount, and average loan amount for each loan classification
+  GOLD:      SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END as region, COUNT(l.loan_id) as loan_count, S
+  SUBMITTED: SELECT CASE WHEN d.district_id = 1 THEN 'Prague' ELSE 'Other Districts' END AS region,
+       CASE WHEN l.status = 'A' T
+  ERROR:     Results do not match
+
+[18/26] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit, financial
+  Tables: ~  missed=Credit.charge
+  Seq:    find_schema → list_tables(financial) → describe(financial.trans) → find_schema → describe(financial.disp) → describe(financial.order) → describe(financial.accou
+  PROMPT:    Find the top 50 statements by net amount.
+  GOLD:      SELECT c.statement_no, SUM(CASE WHEN c.charge_code != 'RF' THEN c.charge_amt ELSE 0 END) as gross_charges, SUM(CASE WHEN
+  SUBMITTED: SELECT s.statement_no,
+       s.member_no,
+       s.statement_dt,
+       s.due_dt,
+       s.statement_amt,
+       COALES
+  ERROR:     Results do not match
+
+[19/26] evals_hard | MISMATCH | schema=Credit
+  Schema: ✓  explored=Credit
+  Tables: ✓  gold=(Credit.charge, Credit.member)
+  Seq:    find_schema → list_tables(Credit) → describe(Credit.member) → run_sql → find_schema → run_sql → submit
+  PROMPT:    Identify the top 30 members (first, last) by cumulative lifetime charges.
+  GOLD:      SELECT m.firstname, m.lastname, SUM(c.charge_amt) as lifetime_charges FROM Credit.member m JOIN Credit.charge c ON m.mem
+  SUBMITTED: SELECT m.firstname, m.lastname, SUM(CASE WHEN c.charge_code = 'RF' THEN -c.charge_amt ELSE c.charge_amt END) AS lifetime
+  ERROR:     Results do not match
+
+[20/26] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find the top 50 non-reliever pitchers by ERA (Earned Run Average). Show the player's first and last 
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.ER * 9.0) / (pi.IPouts / 3.0) as ERA FR
+  SUBMITTED: SELECT p.nameFirst,
+       p.nameLast,
+       pi.yearID AS year,
+       SUM(pi.IPouts) / 3.0 AS innings_pitched,
+       
+  ERROR:     Results do not match
+
+[21/26] evals_hard | MISMATCH | schema=Hockey
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Hockey.Master, Hockey.Scoring)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find the top 50 NHL players by average goals per season, only including players with at least 5 seas
+  GOLD:      SELECT m.firstName, m.lastName, CAST(SUM(s.G) AS REAL) / COUNT(DISTINCT s.year) as avg_goals_per_season, COUNT(DISTINCT 
+  SUBMITTED: SELECT m.playerID, m.firstName, m.lastName,
+       COUNT(DISTINCT s.year) AS seasons,
+       SUM(s.G) AS total_goals,
+  
+  ERROR:     Results do not match
+
+[22/26] evals_hard | MISMATCH | schema=lahman_2014
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(lahman_2014.pitching, lahman_2014.players)
+  Seq:    find_schema → run_sql → run_sql → submit
+  PROMPT:    Find the top 8 pitchers by WHIP. Show the player's first and last name, the year, the innings pitche
+  GOLD:      SELECT p.nameFirst, p.nameLast, pi.yearID, pi.IPouts / 3 as innings_pitched, (pi.BB + pi.H) / (pi.IPouts / 3.0) as WHIP 
+  SUBMITTED: SELECT p.nameFirst, p.nameLast, pi.yearID AS year,
+       SUM(pi.IPouts) / 3.0 AS innings_pitched,
+       (SUM(pi.BB) + 
+  ERROR:     Results do not match
+
+[23/26] evals_hard | MISMATCH | schema=ErgastF1
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(ErgastF1.constructors, ErgastF1.results)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Find the top 30 constructors with the highest number of races where at least two cars started.
+  GOLD:      SELECT c.name as constructor, COUNT(DISTINCT r1.raceId) as races_at_least_two_started FROM ErgastF1.results r1 JOIN Erga
+  SUBMITTED: SELECT c.constructorId, c.constructorRef, COUNT(*) AS race_count
+FROM (
+  SELECT raceId, constructorId
+  FROM ErgastF1.r
+  ERROR:     Results do not match
+
+[24/26] evals_hard | MISMATCH | schema=Airline
+  Schema: ✓  explored=(none)
+  Tables: ✓  gold=(Airline.On_Time_On_Time_Performance_2016_1)
+  Seq:    find_schema → run_sql → submit
+  PROMPT:    Show carrier performance with counts of on-time, moderately delayed, and severely delayed flights.
+  GOLD:      SELECT UniqueCarrier, SUM(CASE WHEN ArrDelayMinutes <= 15 THEN 1 ELSE 0 END) as on_time, SUM(CASE WHEN ArrDelayMinutes >
+  SUBMITTED: SELECT f.UniqueCarrier,
+       COUNT(CASE WHEN f.ArrDelayMinutes <= 15 THEN 1 END) AS on_time_cnt,
+       COUNT(CASE WHE
+  ERROR:     Results do not match
+
+[25/26] evals_hard | MISMATCH | schema=Credit
+  Schema: ✗  explored=ccs
+  Tables: ✗  gold=(Credit.charge)
+  Seq:    find_schema → run_sql → run_sql → run_sql → describe(ccs.transactions_1k) → run_sql → submit
+  PROMPT:    Calculate the average transaction value.
+  GOLD:      SELECT AVG(charge_amt) as avg_transaction_value FROM Credit.charge WHERE charge_amt >= 5 AND charge_amt != 0.01 AND char
+  SUBMITTED: SELECT AVG(Amount * Price) AS average_transaction_value FROM ccs.transactions_1k
+  ERROR:     Results do not match
+
+[26/26] evals_hard | AGENT_ERROR | schema=financial
+  Schema: ✓  explored=financial
+  Tables: ✓  gold=(financial.account, financial.district, financial.loan)
+  Seq:    find_schema → describe(financial.account) → describe(financial.district) → describe(financial.loan) → list_tables(financial) → run_sql → run_sql → run_sql → des
+  PROMPT:    What is the total amount of performing loans by district name?
+  GOLD:      SELECT d.A2 as district_name, SUM(l.amount) as total_loan_amount FROM financial.district d JOIN financial.account a ON d
+  SUBMITTED: (none)
+  ERROR:     Agent error: Max iterations reached
+
